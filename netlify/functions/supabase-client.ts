@@ -395,6 +395,30 @@ export const handler: Handler = async (event) => {
           body: JSON.stringify({ data: optionValues })
         };
 
+      case 'getOrder':
+        if (!payload.orderId) {
+          throw new Error('Missing orderId');
+        }
+
+        const { data: order, error: orderError } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            payment_status,
+            payment_processor_response,
+            response_message
+          `)
+          .eq('order_id', payload.orderId)
+          .single();
+
+        if (orderError) throw orderError;
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ data: order })
+        };
+
       default:
         return {
           statusCode: 400,

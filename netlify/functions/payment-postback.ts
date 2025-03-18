@@ -19,6 +19,7 @@ interface EPNResponse {
   OrderID?: string;
   'Postback.OrderID'?: string;
   'Postback.RestrictKey'?: string;
+  Response?: string;
 }
 
 export const handler: Handler = async (event) => {
@@ -124,6 +125,9 @@ export const handler: Handler = async (event) => {
     const avsResp = data.AVSResp;
     const cvv2Resp = data.CVV2Resp;
 
+    // Extract response message, removing the first character (status indicator)
+    const responseMessage = data.Response ? data.Response.substring(1) : respText;
+
     if (!transactionId || !orderId) {
       console.error('Missing required fields in postback:', {
         timestamp: new Date().toISOString(),
@@ -146,6 +150,7 @@ export const handler: Handler = async (event) => {
       authCode,
       avsResponse: avsResp,
       cvv2Response: cvv2Resp,
+      responseMessage,
       fullResponse: JSON.stringify(data)
     });
 
@@ -154,7 +159,8 @@ export const handler: Handler = async (event) => {
       timestamp: new Date().toISOString(),
       orderId,
       newStatus: success ? 'paid' : data.Success === 'N' ? 'failed' : 'pending',
-      transactionId
+      transactionId,
+      responseMessage
     });
 
     const { error: updateError } = await supabase
@@ -172,7 +178,8 @@ export const handler: Handler = async (event) => {
           cvv2Response: cvv2Resp,
           transactionId,
           fullResponse: data
-        }
+        },
+        response_message: responseMessage
       })
       .eq('order_id', orderId);
 
@@ -201,7 +208,7 @@ export const handler: Handler = async (event) => {
         success: true,
         status: success ? 'paid' : 
                 fullResponse.charAt(0) === 'N' ? 'failed' : 'pending',
-        message: respText || (success ? 'Payment approved' : 'Payment declined'),
+        message: responseMessage || (success ? 'Payment approved' : 'Payment declined'),
         transactionId,
         authCode,
         orderId

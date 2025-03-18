@@ -5,7 +5,17 @@ import { useCartStore } from '../store/cartStore';
 import type { CartItem } from '../store/cartStore';
 import { paymentService } from '../services/paymentService';
 import PaymentProcessingModal from '../components/PaymentProcessingModal';
+import { useOrderPolling } from '../hooks/useOrderPolling';
 import Button from '../components/Button';
+
+// US State abbreviations for validation
+const US_STATES = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+];
 
 const formatOptionLabel = (key: string, value: any): string => {
   switch (key) {
@@ -49,10 +59,12 @@ const CheckoutPage: React.FC = () => {
   const { items, clearCart } = useCartStore();
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'failed'>('pending');
+  const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
   const [showProcessingModal, setShowProcessingModal] = useState(false);
   const [step, setStep] = useState<'details' | 'payment'>('details');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stateError, setStateError] = useState<string | null>(null);
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.08; // 8% tax
@@ -84,6 +96,47 @@ const CheckoutPage: React.FC = () => {
     sameAsShipping: true
   });
 
+  // Use our polling hook
+  useOrderPolling({
+    orderId,
+    onStatusChange: (status, message) => {
+      console.log('Payment status update:', {
+        timestamp: new Date().toISOString(),
+        orderId,
+        status,
+        message
+      });
+      setPaymentStatus(status);
+      if (message) {
+        setPaymentMessage(message);
+      }
+    }
+  });
+
+  const validateState = (state: string) => {
+    const upperState = state.toUpperCase();
+    if (!US_STATES.includes(upperState)) {
+      setStateError('Please enter a valid 2-letter state abbreviation (e.g., AZ for Arizona)');
+      return false;
+    }
+    setStateError(null);
+    return true;
+  };
+
+  const handleStateChange = (e: React.ChangeEvent<HTMLInputElement>, isBilling: boolean = false) => {
+    const value = e.target.value.toUpperCase();
+    if (value.length <= 2) {
+      if (isBilling) {
+        setBillingInfo(prev => ({ ...prev, state: value }));
+      } else {
+        setFormData(prev => ({ ...prev, state: value }));
+      }
+      if (value.length === 2) {
+        validateState(value);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -91,9 +144,20 @@ const CheckoutPage: React.FC = () => {
     const newOrderId = crypto.randomUUID();
     setOrderId(newOrderId);
 
+    // Validate state before proceeding
+    if (!validateState(formData.state)) {
+      return;
+    }
+
+    if (!billingInfo.sameAsShipping && !validateState(billingInfo.state)) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setShowProcessingModal(true);
+    setPaymentStatus('pending');
+    setPaymentMessage(null);
 
     try {
       // Validate required fields
@@ -112,13 +176,13 @@ const CheckoutPage: React.FC = () => {
         shippingAddress: {
           address: formData.address,
           city: formData.city,
-          state: formData.state,
+          state: formData.state.toUpperCase(),
           zipCode: formData.zipCode
         },
         billingAddress: billingInfo.sameAsShipping ? null : {
           address: billingInfo.address,
           city: billingInfo.city,
-          state: billingInfo.state,
+          state: billingInfo.state.toUpperCase(),
           zipCode: billingInfo.zipCode
         },
         orderId: newOrderId,
@@ -147,57 +211,11 @@ const CheckoutPage: React.FC = () => {
         status: 'pending'
       });
 
-      // Start checking order status
-      const checkOrderStatus = async () => {
-        try {
-          const response = await fetch('/.netlify/functions/subscribe-to-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId: newOrderId })
-          });
-          
-          const result = await response.json();
-          
-          if (!result.success) {
-            throw new Error(result.message || 'Failed to check order status');
-          }
-          
-          console.log('Order status update:', {
-            orderId: newOrderId,
-            status: result.status,
-            timestamp: new Date().toISOString()
-          });
-
-          setPaymentStatus(result.status);
-
-          if (result.status === 'paid') {
-            clearCart();
-            setTimeout(() => {
-              navigate('/payment/success', { state: { orderId: newOrderId } });
-            }, 2000);
-          } else if (result.status === 'failed') {
-            setTimeout(() => {
-              navigate('/payment/error', { state: { orderId: newOrderId } });
-            }, 2000);
-          } else {
-            // Continue polling if still pending
-            setTimeout(checkOrderStatus, 3000);
-          }
-        } catch (error) {
-          console.error('Failed to check order status:', error);
-          setTimeout(checkOrderStatus, 3000);
-        }
-      };
-
-      // Wait 5 seconds before starting to check status
-      setTimeout(() => {
-        checkOrderStatus();
-      }, 5000);
-
     } catch (error: any) {
       console.error('Payment error:', error);
       setError(error.message);
       setPaymentStatus('failed');
+      setPaymentMessage(error.message);
     } finally {
       setLoading(false);
     }
@@ -225,11 +243,12 @@ const CheckoutPage: React.FC = () => {
         isOpen={showProcessingModal}
         orderId={orderId || ''}
         status={paymentStatus}
-        message={error}
+        message={paymentMessage || undefined}
         onRetry={() => {
           setShowProcessingModal(false);
           setError(null);
           setPaymentStatus('pending');
+          setPaymentMessage(null);
         }}
       />
 
@@ -338,10 +357,15 @@ const CheckoutPage: React.FC = () => {
                           <input
                             type="text"
                             required
+                            maxLength={2}
+                            placeholder="AZ"
                             value={formData.state}
-                            onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
-                            className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+                            onChange={(e) => handleStateChange(e)}
+                            className={`w-full bg-dark-gray border ${stateError ? 'border-red-500' : 'border-gunmetal-light'} rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent uppercase`}
                           />
+                          {stateError && (
+                            <p className="text-red-500 text-xs mt-1">{stateError}</p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -374,6 +398,9 @@ const CheckoutPage: React.FC = () => {
                         <Button
                           variant="primary"
                           onClick={() => {
+                            if (!validateState(formData.state)) {
+                              return;
+                            }
                             if (billingInfo.sameAsShipping) {
                               setBillingInfo(prev => ({
                                 ...prev,
@@ -455,10 +482,15 @@ const CheckoutPage: React.FC = () => {
                                 <input
                                   type="text"
                                   required
+                                  maxLength={2}
+                                  placeholder="AZ"
                                   value={billingInfo.state}
-                                  onChange={(e) => setBillingInfo(prev => ({ ...prev, state: e.target.value }))}
-                                  className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+                                  onChange={(e) => handleStateChange(e, true)}
+                                  className={`w-full bg-dark-gray border ${stateError ? 'border-red-500' : 'border-gunmetal-light'} rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent uppercase`}
                                 />
+                                {stateError && (
+                                  <p className="text-red-500 text-xs mt-1">{stateError}</p>
+                                )}
                               </div>
                               <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -589,6 +621,7 @@ const CheckoutPage: React.FC = () => {
                 
                 <div className="space-y-4 mb-6">
                   {items.map((item) => (
+                
                     <div key={item.id} className="space-y-2">
                       <div className="flex items-start">
                         <img
@@ -641,4 +674,4 @@ const CheckoutPage: React.FC = () => {
   );
 };
 
-export default CheckoutPage
+export default CheckoutPage;
