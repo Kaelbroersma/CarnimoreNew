@@ -39,11 +39,13 @@ export const useOrderPolling = ({ orderId, onStatusChange }: UseOrderPollingProp
           timestamp: new Date().toISOString(),
           orderId,
           status: order?.payment_status,
-          message: order?.response_message
+          message: order?.response_message,
+          processorResponse: order?.payment_processor_response
         });
         
         const status = order?.payment_status as 'pending' | 'paid' | 'failed';
         const message = order?.response_message;
+        const processorResponse = order?.payment_processor_response;
         
         onStatusChange?.(status, message);
 
@@ -51,10 +53,13 @@ export const useOrderPolling = ({ orderId, onStatusChange }: UseOrderPollingProp
           clearCart();
           setTimeout(() => {
             if (isSubscribed) {
-              navigate('/payment/success', { 
+              navigate('/pages/PaymentSuccessPage', { 
                 state: { 
                   orderId,
-                  message: 'Your payment has been processed successfully.'
+                  message: message || 'Your payment has been processed successfully.',
+                  transactionId: processorResponse?.transactionId,
+                  authCode: processorResponse?.authCode,
+                  orderTotal: order?.total_amount
                 }
               });
             }
