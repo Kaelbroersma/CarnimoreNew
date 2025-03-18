@@ -20,11 +20,6 @@ export const handler: Handler = async (event) => {
     'Content-Type': 'application/json'
   };
 
-  // Handle preflight requests
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers };
-  }
-
   try {
     if (!event.body) {
       throw new Error('Missing request body');
@@ -244,19 +239,62 @@ export const handler: Handler = async (event) => {
         contentType: response.headers.get('content-type')
       });
 
-      // Parse response
+      // Parse response based on content type
       let processorResponse;
       try {
-        // First try parsing as JSON
-        processorResponse = JSON.parse(responseText);
-        console.log('Parsed JSON response:', {
-          timestamp: new Date().toISOString(),
-          orderId,
-          response: processorResponse
-        });
-      } catch {
-        // If not JSON, try parsing as key-value pairs
+        // Check if response is HTML error message
+        if (responseText.includes('<html>')) {
+          // Extract error message from HTML
+          const errorMatch = responseText.match(/"([^"]+)"/);
+          const errorMessage = errorMatch ? errorMatch[1] : 'Unknown error';
+          
+          console.log('Parsed HTML error response:', {
+            timestamp: new Date().toISOString(),
+            orderId,
+            errorMessage
+          });
+
+          // Update order with error status
+          const { error: updateError } = await supabase
+            .from('orders')
+            .update({
+              payment_status: 'failed',
+              payment_processor_response: {
+                error: errorMessage,
+                raw_response: responseText
+              }
+            })
+            .eq('order_id', orderId);
+
+          if (updateError) {
+            console.error('Failed to update order with error status:', {
+              timestamp: new Date().toISOString(),
+              orderId,
+              error: updateError
+            });
+          }
+
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              message: errorMessage,
+              orderId
+            })
+          };
+        }
+
+        // Try parsing as JSON first
         try {
+          processorResponse = JSON.parse(responseText);
+          console.log('Parsed JSON response:', {
+            timestamp: new Date().toISOString(),
+            orderId,
+            response: processorResponse
+          });
+        } catch {
+          // If not JSON, try parsing as key-value pairs
           const separator = responseText.includes(';') ? ';' : ',';
           console.log('Attempting to parse as key-value pairs:', {
             timestamp: new Date().toISOString(),
@@ -283,59 +321,59 @@ export const handler: Handler = async (event) => {
             orderId,
             response: processorResponse
           });
-        } catch (e) {
-          console.error('Failed to parse processor response:', {
+        }
+
+        // Validate response
+        if (processorResponse['Postback.OrderID'] !== orderId) {
+          console.error('Order ID mismatch in processor response:', {
             timestamp: new Date().toISOString(),
             orderId,
-            error: e,
-            responseText,
-            errorStack: e.stack
+            responseOrderId: processorResponse['Postback.OrderID'],
+            fullResponse: processorResponse
           });
-          throw new Error('Invalid processor response format');
+          throw new Error('Order ID mismatch in processor response');
         }
-      }
 
-      // Validate response
-      if (processorResponse['Postback.OrderID'] !== orderId) {
-        console.error('Order ID mismatch in processor response:', {
-          timestamp: new Date().toISOString(),
-          orderId,
-          responseOrderId: processorResponse['Postback.OrderID'],
-          fullResponse: processorResponse
-        });
-        throw new Error('Order ID mismatch in processor response');
-      }
-
-      // Update order with processor response
-      console.log('Updating order with processor response:', {
-        timestamp: new Date().toISOString(),
-        orderId,
-        status: processorResponse.Success === 'Y' ? 'paid' : 'failed',
-        response: processorResponse
-      });
-
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({
-          payment_processor_response: processorResponse,
-          payment_status: processorResponse.Success === 'Y' ? 'paid' : 'failed'
-        })
-        .eq('order_id', orderId);
-
-      if (updateError) {
-        console.error('Failed to update order with processor response:', {
-          timestamp: new Date().toISOString(),
-          orderId,
-          error: updateError,
-          response: processorResponse
-        });
-      } else {
-        console.log('Order successfully updated with processor response:', {
+        // Update order with processor response
+        console.log('Updating order with processor response:', {
           timestamp: new Date().toISOString(),
           orderId,
           status: processorResponse.Success === 'Y' ? 'paid' : 'failed',
           response: processorResponse
         });
+
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({
+            payment_processor_response: processorResponse,
+            payment_status: processorResponse.Success === 'Y' ? 'paid' : 'failed'
+          })
+          .eq('order_id', orderId);
+
+        if (updateError) {
+          console.error('Failed to update order with processor response:', {
+            timestamp: new Date().toISOString(),
+            orderId,
+            error: updateError,
+            response: processorResponse
+          });
+        } else {
+          console.log('Order successfully updated with processor response:', {
+            timestamp: new Date().toISOString(),
+            orderId,
+            status: processorResponse.Success === 'Y' ? 'paid' : 'failed',
+            response: processorResponse
+          });
+        }
+      } catch (error) {
+        console.error('Failed to parse processor response:', {
+          timestamp: new Date().toISOString(),
+          orderId,
+          error,
+          responseText,
+          errorStack: error.stack
+        });
+        throw new Error('Invalid processor response format');
       }
     } else {
       console.error('Processor request failed:', {
