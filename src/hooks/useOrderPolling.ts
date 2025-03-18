@@ -53,7 +53,7 @@ export const useOrderPolling = ({ orderId, onStatusChange }: UseOrderPollingProp
           clearCart();
           setTimeout(() => {
             if (isSubscribed) {
-              navigate('/pages/PaymentSuccessPage', { 
+              navigate('/payment/success', { 
                 state: { 
                   orderId,
                   message: message || 'Your payment has been processed successfully.',
