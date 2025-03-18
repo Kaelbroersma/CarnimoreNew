@@ -50,31 +50,32 @@ export const useOrderPolling = ({ orderId, onStatusChange }: UseOrderPollingProp
         onStatusChange?.(status, message);
 
         if (status === 'paid') {
-          clearCart();
+          // Navigate first, then clear cart
+          navigate('/payment/success', { 
+            state: { 
+              orderId,
+              message: message || 'Your payment has been processed successfully.',
+              transactionId: processorResponse?.transactionId,
+              authCode: processorResponse?.authCode,
+              orderTotal: order?.total_amount
+            },
+            replace: true // Use replace to prevent back navigation to checkout
+          });
+          
+          // Clear cart after navigation
           setTimeout(() => {
             if (isSubscribed) {
-              navigate('/payment/success', { 
-                state: { 
-                  orderId,
-                  message: message || 'Your payment has been processed successfully.',
-                  transactionId: processorResponse?.transactionId,
-                  authCode: processorResponse?.authCode,
-                  orderTotal: order?.total_amount
-                }
-              });
+              clearCart();
             }
-          }, 2000);
+          }, 100);
         } else if (status === 'failed') {
-          setTimeout(() => {
-            if (isSubscribed) {
-              navigate('/payment/error', { 
-                state: { 
-                  orderId,
-                  message: message || 'There was an error processing your payment.'
-                }
-              });
-            }
-          }, 2000);
+          navigate('/payment/error', { 
+            state: { 
+              orderId,
+              message: message || 'There was an error processing your payment.'
+            },
+            replace: true
+          });
         }
       } catch (error) {
         console.error('Failed to check order status:', {
@@ -115,7 +116,8 @@ export const useOrderPolling = ({ orderId, onStatusChange }: UseOrderPollingProp
               state: {
                 orderId,
                 message: 'Payment processing timed out. Please try again.'
-              }
+              },
+              replace: true
             });
           }
         }, 5 * 60 * 1000);
