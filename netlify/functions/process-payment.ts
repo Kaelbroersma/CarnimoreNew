@@ -20,13 +20,21 @@ export const handler: Handler = async (event) => {
     'Content-Type': 'application/json'
   };
 
+  // Handle preflight requests
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers };
+  }
+
   try {
     if (!event.body) {
       throw new Error('Missing request body');
     }
     
     console.log('Payment processing started:', {
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      method: event.httpMethod,
+      headers: event.headers,
+      body: event.body
     });
 
     const paymentData = JSON.parse(event.body);
@@ -46,7 +54,9 @@ export const handler: Handler = async (event) => {
       timestamp: new Date().toISOString(),
       orderId,
       amount,
-      itemCount: items?.length
+      itemCount: items?.length,
+      hasShippingAddress: !!shippingAddress,
+      hasBillingAddress: !!billingAddress
     });
 
     // Get user ID from auth context if available
@@ -80,13 +90,18 @@ export const handler: Handler = async (event) => {
     }
 
     // Create initial order record in Supabase
-    console.log('Creating order record:', { timestamp: new Date().toISOString(), orderId });
+    console.log('Creating order record:', { 
+      timestamp: new Date().toISOString(), 
+      orderId,
+      userId,
+      amount 
+    });
 
     const { error: orderError } = await supabase
       .from('orders')
       .insert({
         order_id: orderId,
-        user_id: userId, // Will be null for guest checkouts
+        user_id: userId,
         payment_status: 'pending',
         total_amount: amount,
         shipping_address: formattedShippingAddress,
@@ -104,7 +119,8 @@ export const handler: Handler = async (event) => {
       console.error('Failed to create order:', {
         timestamp: new Date().toISOString(),
         error: orderError,
-        orderId
+        orderId,
+        userId
       });
       throw new Error(`Failed to create order: ${orderError.message}`);
     }
@@ -115,7 +131,12 @@ export const handler: Handler = async (event) => {
     console.log('Creating order items:', {
       timestamp: new Date().toISOString(),
       orderId,
-      itemCount: items.length
+      itemCount: items.length,
+      items: items.map(item => ({
+        id: item.id,
+        quantity: item.quantity,
+        price: item.price
+      }))
     });
 
     const { error: itemsError } = await supabase
@@ -149,7 +170,6 @@ export const handler: Handler = async (event) => {
       TranType: 'Sale',
       IndustryType: 'E',
       Total: amount,
-      // Use billing address if provided, otherwise use shipping address
       Address: (billingAddress?.address || shippingAddress.address || '').trim(),
       City: (billingAddress?.city || shippingAddress.city || '').trim(),
       State: (billingAddress?.state || shippingAddress.state || '').trim(),
@@ -172,7 +192,8 @@ export const handler: Handler = async (event) => {
     console.log('Sending payment request to processor:', {
       timestamp: new Date().toISOString(),
       orderId,
-      amount
+      amount,
+      requestParams: Object.fromEntries(params)
     });
 
     // Create HTTPS request with proper TLS settings
@@ -192,14 +213,139 @@ export const handler: Handler = async (event) => {
 
       console.log('Payment request sent to processor:', { 
         timestamp: new Date().toISOString(),
-        orderId 
+        orderId,
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers)
       });
 
       return response;
     };
 
     // Send the request
-    await makeRequest();
+    const response = await makeRequest();
+    
+    // Log raw response
+    console.log('Raw processor response:', {
+      timestamp: new Date().toISOString(),
+      orderId,
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers)
+    });
+    
+    // Handle processor response
+    if (response.ok) {
+      const responseText = await response.text();
+      console.log('Processor response body:', {
+        timestamp: new Date().toISOString(),
+        orderId,
+        responseText,
+        contentType: response.headers.get('content-type')
+      });
+
+      // Parse response
+      let processorResponse;
+      try {
+        // First try parsing as JSON
+        processorResponse = JSON.parse(responseText);
+        console.log('Parsed JSON response:', {
+          timestamp: new Date().toISOString(),
+          orderId,
+          response: processorResponse
+        });
+      } catch {
+        // If not JSON, try parsing as key-value pairs
+        try {
+          const separator = responseText.includes(';') ? ';' : ',';
+          console.log('Attempting to parse as key-value pairs:', {
+            timestamp: new Date().toISOString(),
+            orderId,
+            separator,
+            pairs: responseText.split(separator)
+          });
+          
+          processorResponse = Object.fromEntries(
+            responseText.split(separator).map(pair => {
+              const [key, value] = pair.split('=').map(s => decodeURIComponent(s.trim()));
+              console.log('Parsed key-value pair:', {
+                timestamp: new Date().toISOString(),
+                orderId,
+                key,
+                value
+              });
+              return [key, value];
+            })
+          );
+          
+          console.log('Parsed key-value response:', {
+            timestamp: new Date().toISOString(),
+            orderId,
+            response: processorResponse
+          });
+        } catch (e) {
+          console.error('Failed to parse processor response:', {
+            timestamp: new Date().toISOString(),
+            orderId,
+            error: e,
+            responseText,
+            errorStack: e.stack
+          });
+          throw new Error('Invalid processor response format');
+        }
+      }
+
+      // Validate response
+      if (processorResponse['Postback.OrderID'] !== orderId) {
+        console.error('Order ID mismatch in processor response:', {
+          timestamp: new Date().toISOString(),
+          orderId,
+          responseOrderId: processorResponse['Postback.OrderID'],
+          fullResponse: processorResponse
+        });
+        throw new Error('Order ID mismatch in processor response');
+      }
+
+      // Update order with processor response
+      console.log('Updating order with processor response:', {
+        timestamp: new Date().toISOString(),
+        orderId,
+        status: processorResponse.Success === 'Y' ? 'paid' : 'failed',
+        response: processorResponse
+      });
+
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({
+          payment_processor_response: processorResponse,
+          payment_status: processorResponse.Success === 'Y' ? 'paid' : 'failed'
+        })
+        .eq('order_id', orderId);
+
+      if (updateError) {
+        console.error('Failed to update order with processor response:', {
+          timestamp: new Date().toISOString(),
+          orderId,
+          error: updateError,
+          response: processorResponse
+        });
+      } else {
+        console.log('Order successfully updated with processor response:', {
+          timestamp: new Date().toISOString(),
+          orderId,
+          status: processorResponse.Success === 'Y' ? 'paid' : 'failed',
+          response: processorResponse
+        });
+      }
+    } else {
+      console.error('Processor request failed:', {
+        timestamp: new Date().toISOString(),
+        orderId,
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers)
+      });
+    }
 
     // Return success response immediately
     return {

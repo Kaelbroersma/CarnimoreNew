@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, AlertCircle, Loader, XCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle, Loader2, XCircle } from 'lucide-react';
 
 interface PaymentProcessingModalProps {
   isOpen: boolean;
   orderId: string;
   status: 'pending' | 'paid' | 'failed';
   message?: string;
+  onClose?: () => void;
   onRetry?: () => void;
 }
 
@@ -15,6 +16,7 @@ const PaymentProcessingModal: React.FC<PaymentProcessingModalProps> = ({
   orderId,
   status,
   message,
+  onClose,
   onRetry
 }) => {
   return (
@@ -37,7 +39,7 @@ const PaymentProcessingModal: React.FC<PaymentProcessingModalProps> = ({
             <div className="flex flex-col items-center text-center">
               {status === 'pending' ? (
                 <>
-                  <Loader className="w-16 h-16 text-tan animate-spin mb-4" />
+                  <Loader2 className="w-16 h-16 text-tan animate-spin mb-4" />
                   <h2 className="text-xl font-bold mb-2">Processing Payment</h2>
                   <div className="space-y-2">
                     <p className="text-gray-400">Please wait while we process your payment...</p>
@@ -52,8 +54,15 @@ const PaymentProcessingModal: React.FC<PaymentProcessingModalProps> = ({
                   <h2 className="text-xl font-bold mb-2">Payment Successful</h2>
                   <div className="space-y-2">
                     <p className="text-gray-400">{message || 'Your payment has been processed successfully.'}</p>
-                    <p className="text-sm text-gray-400">Order ID: {orderId}</p>
-                    <p className="text-sm text-gray-400">Redirecting to confirmation page...</p>
+                    <p className="text-sm text-gray-400 mb-4">Order ID: {orderId}</p>
+                    {onClose && (
+                      <button
+                        onClick={onClose}
+                        className="mt-4 bg-tan text-black hover:bg-opacity-90 font-medium transition-all duration-300 px-6 py-2 text-sm rounded-sm"
+                      >
+                        Continue
+                      </button>
+                    )}
                   </div>
                 </>
               ) : (

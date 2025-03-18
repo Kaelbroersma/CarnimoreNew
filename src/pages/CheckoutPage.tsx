@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Shield, Truck } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import type { CartItem } from '../store/cartStore';
 import { paymentService } from '../services/paymentService';
 import PaymentProcessingModal from '../components/PaymentProcessingModal';
 import Button from '../components/Button';
-import type { PaymentData } from '../types/payment';
 
 const formatOptionLabel = (key: string, value: any): string => {
   switch (key) {
@@ -47,7 +46,6 @@ const renderItemOptions = (item: CartItem) => {
 
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { items, clearCart } = useCartStore();
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'failed'>('pending');
@@ -55,59 +53,6 @@ const CheckoutPage: React.FC = () => {
   const [step, setStep] = useState<'details' | 'payment'>('details');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Subscribe to order status updates
-    let subscription: any;
-    let isSubscribed = true;
-
-    if (orderId) {
-      const setupSubscription = async () => {
-        try {
-          subscription = await paymentService.subscribeToOrder(orderId, (status) => {
-            if (!isSubscribed || !status) return;
-
-            setPaymentStatus(status as 'pending' | 'paid' | 'failed');
-
-            // Handle status changes
-            switch (status) {
-              case 'paid':
-                clearCart();
-                setTimeout(() => {
-                  if (isSubscribed) {
-                    navigate('/payment/success', { 
-                      state: { orderId } 
-                    });
-                  }
-                }, 2000);
-                break;
-                
-              case 'failed':
-                setTimeout(() => {
-                  if (isSubscribed) {
-                    navigate('/payment/error', { 
-                      state: { orderId } 
-                    });
-                  }
-                }, 2000);
-                break;
-            }
-          });
-        } catch (error) {
-          console.error('Failed to setup order subscription:', error);
-        }
-      };
-
-      setupSubscription();
-    }
-
-    return () => {
-      isSubscribed = false;
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
-  }, [orderId, navigate, clearCart]);
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.08; // 8% tax
@@ -202,10 +147,57 @@ const CheckoutPage: React.FC = () => {
         status: 'pending'
       });
 
+      // Start checking order status
+      const checkOrderStatus = async () => {
+        try {
+          const response = await fetch('/.netlify/functions/subscribe-to-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: newOrderId })
+          });
+          
+          const result = await response.json();
+          
+          if (!result.success) {
+            throw new Error(result.message || 'Failed to check order status');
+          }
+          
+          console.log('Order status update:', {
+            orderId: newOrderId,
+            status: result.status,
+            timestamp: new Date().toISOString()
+          });
+
+          setPaymentStatus(result.status);
+
+          if (result.status === 'paid') {
+            clearCart();
+            setTimeout(() => {
+              navigate('/payment/success', { state: { orderId: newOrderId } });
+            }, 2000);
+          } else if (result.status === 'failed') {
+            setTimeout(() => {
+              navigate('/payment/error', { state: { orderId: newOrderId } });
+            }, 2000);
+          } else {
+            // Continue polling if still pending
+            setTimeout(checkOrderStatus, 3000);
+          }
+        } catch (error) {
+          console.error('Failed to check order status:', error);
+          setTimeout(checkOrderStatus, 3000);
+        }
+      };
+
+      // Wait 5 seconds before starting to check status
+      setTimeout(() => {
+        checkOrderStatus();
+      }, 5000);
+
     } catch (error: any) {
       console.error('Payment error:', error);
       setError(error.message);
-      // Don't close modal or set status - let subscription handle it
+      setPaymentStatus('failed');
     } finally {
       setLoading(false);
     }
@@ -649,4 +641,4 @@ const CheckoutPage: React.FC = () => {
   );
 };
 
-export default CheckoutPage;
+export default CheckoutPage
