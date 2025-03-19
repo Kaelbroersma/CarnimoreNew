@@ -150,6 +150,57 @@ export const handler: Handler = async (event) => {
           body: JSON.stringify({ data: session })
         };
 
+      case 'updateOrder':
+        try {
+          if (!payload.orderId || !payload.userId) {
+            throw new Error('Missing required fields: orderId and userId');
+          }
+
+          console.log('Updating order:', {
+            timestamp: new Date().toISOString(),
+            orderId: payload.orderId,
+            userId: payload.userId
+          });
+
+          // Update the order with the user ID
+          const { error: updateError } = await supabase
+            .from('orders')
+            .update({ user_id: payload.userId })
+            .eq('order_id', payload.orderId)
+            .is('user_id', null); // Only update if user_id is null
+
+          if (updateError) {
+            console.error('Failed to update order:', {
+              timestamp: new Date().toISOString(),
+              error: updateError,
+              orderId: payload.orderId,
+              userId: payload.userId
+            });
+            throw updateError;
+          }
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ 
+              success: true,
+              message: 'Order successfully linked to user account'
+            })
+          };
+        } catch (error: any) {
+          console.error('Error updating order:', error);
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to update order',
+                details: error.message
+              }
+            })
+          };
+        }
+
       case 'getProducts':
         try {
           if (!payload.categorySlug) {
