@@ -1,5 +1,5 @@
-import { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
+import { Handler } from '@netlify/functions';
 
 // Validate environment variables
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -403,15 +403,8 @@ export const handler: Handler = async (event) => {
         const { data: order, error: orderError } = await supabase
           .from('orders')
           .select(`
-            order_id,
-            order_date,
-            total_amount,
+            *,
             payment_status,
-            order_status,
-            shipping_address,
-            shipping_method,
-            tracking_number,
-            payment_method,
             payment_processor_response,
             response_message
           `)
@@ -443,18 +436,14 @@ export const handler: Handler = async (event) => {
             shipping_method,
             tracking_number,
             payment_method,
-            order_items (
-              product_id,
-              quantity,
-              price_at_time_of_order,
-              total_price,
-              options
-            )
+            order_items
           `)
           .eq('user_id', payload.userId)
           .order('order_date', { ascending: false });
 
-        if (ordersError) throw ordersError;
+        if (ordersError) {
+          throw ordersError;
+        }
 
         return {
           statusCode: 200,

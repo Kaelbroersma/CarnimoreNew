@@ -25,13 +25,6 @@ export const handler: Handler = async (event) => {
       throw new Error('Missing request body');
     }
     
-    console.log('Payment processing started:', {
-      timestamp: new Date().toISOString(),
-      method: event.httpMethod,
-      headers: event.headers,
-      body: event.body
-    });
-
     const paymentData = JSON.parse(event.body);
     const { 
       orderId, 
@@ -44,15 +37,6 @@ export const handler: Handler = async (event) => {
       billingAddress,
       items
     } = paymentData;
-
-    console.log('Payment data received:', {
-      timestamp: new Date().toISOString(),
-      orderId,
-      amount,
-      itemCount: items?.length,
-      hasShippingAddress: !!shippingAddress,
-      hasBillingAddress: !!billingAddress
-    });
 
     // Get user ID from auth context if available
     const userId = event.headers.authorization?.split('Bearer ')[1] || null;
@@ -85,24 +69,25 @@ export const handler: Handler = async (event) => {
     }
 
     // Format order items for JSONB storage
-    const formattedOrderItems = items.map(item => ({
-      product_id: item.id,
-      name: item.name,
-      quantity: item.quantity,
-      price: item.price,
-      total: item.price * item.quantity,
-      options: item.options || {}
+    const formattedOrderItems = await Promise.all(items.map(async (item) => {
+      // Get product details from database
+      const { data: product } = await supabase
+        .from('products')
+        .select('name')
+        .eq('product_id', item.id)
+        .single();
+
+      return {
+        product_id: item.id,
+        name: product?.name || 'Unknown Product', // Include product name
+        quantity: item.quantity,
+        price: item.price,
+        total: item.price * item.quantity,
+        options: item.options || {}
+      };
     }));
 
     // Create initial order record in Supabase
-    console.log('Creating order record:', { 
-      timestamp: new Date().toISOString(), 
-      orderId,
-      userId,
-      amount,
-      items: formattedOrderItems
-    });
-
     const { error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -117,7 +102,7 @@ export const handler: Handler = async (event) => {
         shipping_method: 'standard',
         order_status: 'pending',
         created_at: new Date().toISOString(),
-        order_items: formattedOrderItems // Store order items directly in orders table
+        order_items: formattedOrderItems // Store formatted order items
       })
       .select()
       .single();
@@ -131,12 +116,6 @@ export const handler: Handler = async (event) => {
       });
       throw new Error(`Failed to create order: ${orderError.message}`);
     }
-
-    console.log('Order created successfully:', { 
-      timestamp: new Date().toISOString(), 
-      orderId,
-      itemCount: formattedOrderItems.length
-    });
 
     // Build payment processor request payload
     const params = new URLSearchParams({
@@ -165,13 +144,6 @@ export const handler: Handler = async (event) => {
       NOMAIL_MERCHANT: '1'
     });
 
-    console.log('Sending payment request to processor:', {
-      timestamp: new Date().toISOString(),
-      orderId,
-      amount,
-      requestParams: Object.fromEntries(params)
-    });
-
     // Create HTTPS request with proper TLS settings
     const makeRequest = async () => {
       const response = await fetch(EPN_API_URL, {
@@ -187,38 +159,15 @@ export const handler: Handler = async (event) => {
         }
       });
 
-      console.log('Payment request sent to processor:', { 
-        timestamp: new Date().toISOString(),
-        orderId,
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers)
-      });
-
       return response;
     };
 
     // Send the request
     const response = await makeRequest();
     
-    // Log raw response
-    console.log('Raw processor response:', {
-      timestamp: new Date().toISOString(),
-      orderId,
-      status: response.status,
-      statusText: response.statusText,
-      headers: Object.fromEntries(response.headers)
-    });
-    
     // Handle processor response
     if (response.ok) {
       const responseText = await response.text();
-      console.log('Processor response body:', {
-        timestamp: new Date().toISOString(),
-        orderId,
-        responseText,
-        contentType: response.headers.get('content-type')
-      });
 
       // Parse response based on content type
       let processorResponse;
@@ -228,12 +177,6 @@ export const handler: Handler = async (event) => {
           // Extract error message from HTML
           const errorMatch = responseText.match(/"([^"]+)"/);
           const errorMessage = errorMatch ? errorMatch[1] : 'Unknown error';
-          
-          console.log('Parsed HTML error response:', {
-            timestamp: new Date().toISOString(),
-            orderId,
-            errorMessage
-          });
 
           // Update order with error status
           const { error: updateError } = await supabase
@@ -269,60 +212,24 @@ export const handler: Handler = async (event) => {
         // Try parsing as JSON first
         try {
           processorResponse = JSON.parse(responseText);
-          console.log('Parsed JSON response:', {
-            timestamp: new Date().toISOString(),
-            orderId,
-            response: processorResponse
-          });
         } catch {
           // If not JSON, try parsing as key-value pairs
           const separator = responseText.includes(';') ? ';' : ',';
-          console.log('Attempting to parse as key-value pairs:', {
-            timestamp: new Date().toISOString(),
-            orderId,
-            separator,
-            pairs: responseText.split(separator)
-          });
           
           processorResponse = Object.fromEntries(
             responseText.split(separator).map(pair => {
               const [key, value] = pair.split('=').map(s => decodeURIComponent(s.trim()));
-              console.log('Parsed key-value pair:', {
-                timestamp: new Date().toISOString(),
-                orderId,
-                key,
-                value
-              });
               return [key, value];
             })
           );
-          
-          console.log('Parsed key-value response:', {
-            timestamp: new Date().toISOString(),
-            orderId,
-            response: processorResponse
-          });
         }
 
         // Validate response
         if (processorResponse['Postback.OrderID'] !== orderId) {
-          console.error('Order ID mismatch in processor response:', {
-            timestamp: new Date().toISOString(),
-            orderId,
-            responseOrderId: processorResponse['Postback.OrderID'],
-            fullResponse: processorResponse
-          });
           throw new Error('Order ID mismatch in processor response');
         }
 
         // Update order with processor response
-        console.log('Updating order with processor response:', {
-          timestamp: new Date().toISOString(),
-          orderId,
-          status: processorResponse.Success === 'Y' ? 'paid' : 'failed',
-          response: processorResponse
-        });
-
         const { error: updateError } = await supabase
           .from('orders')
           .update({
@@ -338,32 +245,10 @@ export const handler: Handler = async (event) => {
             error: updateError,
             response: processorResponse
           });
-        } else {
-          console.log('Order successfully updated with processor response:', {
-            timestamp: new Date().toISOString(),
-            orderId,
-            status: processorResponse.Success === 'Y' ? 'paid' : 'failed',
-            response: processorResponse
-          });
         }
       } catch (error) {
-        console.error('Failed to parse processor response:', {
-          timestamp: new Date().toISOString(),
-          orderId,
-          error,
-          responseText,
-          errorStack: error.stack
-        });
         throw new Error('Invalid processor response format');
       }
-    } else {
-      console.error('Processor request failed:', {
-        timestamp: new Date().toISOString(),
-        orderId,
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers)
-      });
     }
 
     // Return success response immediately
