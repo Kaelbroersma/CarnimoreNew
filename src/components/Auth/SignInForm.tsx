@@ -21,7 +21,7 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode }) => {
   const isMobile = useMobileDetection();
   const location = useLocation();
 
-  // Get orderId from location state if we're on the payment success page
+  // Get orderId from location state if we're on payment success page
   const orderId = location.pathname === '/payment/success' ? 
     (location.state as any)?.orderId : undefined;
 
@@ -30,20 +30,36 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode }) => {
     setLoading(true);
     setError(null);
 
-    const result = await authService.signIn({
-      ...formData,
-      orderId // Pass orderId if it exists
-    });
-    
-    if (result.error) {
-      setError(result.error.message);
-      setLoading(false);
-    } else {
+    try {
+      // First sign in the user
+      const signInResult = await authService.signIn({
+        email: formData.email,
+        password: formData.password
+      });
+
+      if (signInResult.error) {
+        throw signInResult.error;
+      }
+
+      // If we have an orderId and we're on the success page, link the order
+      if (orderId && location.pathname === '/payment/success') {
+        const user = useAuthStore.getState().user;
+        if (user) {
+          const linkResult = await authService.linkOrderToUser(orderId, user.id);
+          if (linkResult.error) {
+            console.error('Failed to link order:', linkResult.error);
+            // Don't throw - we still want the sign in to be considered successful
+          }
+        }
+      }
+
       onSuccess();
+    } catch (error: any) {
+      setError(error.message);
+      setLoading(false);
     }
   };
 
-  // Optimized animation variants
   const formVariants = {
     hidden: { 
       opacity: 0,

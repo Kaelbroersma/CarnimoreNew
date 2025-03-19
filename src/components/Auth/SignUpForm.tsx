@@ -25,7 +25,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
   const isMobile = useMobileDetection();
   const location = useLocation();
 
-  // Get orderId from location state if we're on the payment success page
+  // Get orderId from location state if we're on payment success page
   const orderId = location.pathname === '/payment/success' ? 
     (location.state as any)?.orderId : undefined;
 
@@ -40,25 +40,40 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
     setLoading(true);
     setError(null);
 
-    const result = await authService.signUp({
-      email: formData.email,
-      password: formData.password,
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      acceptedTerms: formData.acceptedTerms,
-      acceptMarketing: formData.acceptMarketing,
-      orderId // Pass orderId if it exists
-    });
-    
-    if (result.error) {
-      setError(result.error.message);
-      setLoading(false);
-    } else {
+    try {
+      // First sign up the user
+      const signUpResult = await authService.signUp({
+        email: formData.email,
+        password: formData.password,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        acceptedTerms: formData.acceptedTerms,
+        acceptMarketing: formData.acceptMarketing
+      });
+
+      if (signUpResult.error) {
+        throw signUpResult.error;
+      }
+
+      // If we have an orderId and we're on the success page, link the order
+      if (orderId && location.pathname === '/payment/success') {
+        const user = useAuthStore.getState().user;
+        if (user) {
+          const linkResult = await authService.linkOrderToUser(orderId, user.id);
+          if (linkResult.error) {
+            console.error('Failed to link order:', linkResult.error);
+            // Don't throw - we still want the sign up to be considered successful
+          }
+        }
+      }
+
       onSuccess();
+    } catch (error: any) {
+      setError(error.message);
+      setLoading(false);
     }
   };
 
-  // Optimized animation variants
   const formVariants = {
     hidden: { 
       opacity: 0,

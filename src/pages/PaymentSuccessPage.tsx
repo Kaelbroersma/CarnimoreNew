@@ -22,7 +22,9 @@ const PaymentSuccessPage: React.FC = () => {
   useEffect(() => {
     // Scroll to top on mount
     window.scrollTo(0, 0);
+  }, []);
 
+  useEffect(() => {
     // Check if order needs to be linked to user
     const linkOrderToUser = async () => {
       if (user && state?.orderId && !orderLinked) {
