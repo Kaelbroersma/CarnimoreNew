@@ -2,15 +2,21 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 import { authService } from '../../services/authService';
+import { useAuthStore } from '../../store/authStore';
 import Button from '../Button';
 import { useMobileDetection } from '../MobileDetection';
 
-interface SignInFormProps {
+interface PaymentSignInFormProps {
   onSuccess: () => void;
   onSwitchMode: () => void;
+  orderId: string;
 }
 
-const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode }) => {
+const PaymentSignInForm: React.FC<PaymentSignInFormProps> = ({ 
+  onSuccess, 
+  onSwitchMode,
+  orderId 
+}) => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -25,18 +31,31 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode }) => {
     setError(null);
 
     try {
-      const result = await authService.signIn({
+      // Sign in the user
+      const signInResult = await authService.signIn({
         email: formData.email,
         password: formData.password
       });
 
-      if (result.error) {
-        throw result.error;
+      if (signInResult.error) {
+        throw signInResult.error;
+      }
+
+      // Link the order to the user
+      const user = useAuthStore.getState().user;
+      if (user) {
+        const linkResult = await authService.linkOrderToUser({
+          orderId,
+          userId: user.id
+        });
+        if (linkResult.error) {
+          throw linkResult.error;
+        }
       }
 
       onSuccess();
     } catch (error: any) {
-      console.error('Sign in error:', error);
+      console.error('Payment sign in error:', error);
       setError(error.message || 'Failed to sign in');
     } finally {
       setLoading(false);
@@ -121,7 +140,7 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode }) => {
         fullWidth
         disabled={loading}
       >
-        {loading ? 'Signing in...' : 'Sign In'}
+        {loading ? 'Signing in...' : 'Sign In & Link Order'}
       </Button>
 
       <p className="text-center text-sm text-gray-400">
@@ -138,4 +157,4 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode }) => {
   );
 };
 
-export default SignInForm;
+export default PaymentSignInForm;

@@ -2,15 +2,21 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, AlertCircle } from 'lucide-react';
 import { authService } from '../../services/authService';
+import { useAuthStore } from '../../store/authStore';
 import Button from '../Button';
 import { useMobileDetection } from '../MobileDetection';
 
-interface SignUpFormProps {
+interface PaymentSignUpFormProps {
   onSuccess: () => void;
   onSwitchMode: () => void;
+  orderId: string;
 }
 
-const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
+const PaymentSignUpForm: React.FC<PaymentSignUpFormProps> = ({ 
+  onSuccess, 
+  onSwitchMode,
+  orderId 
+}) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -35,7 +41,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
     setError(null);
 
     try {
-      const result = await authService.signUp({
+      // Sign up the user
+      const signUpResult = await authService.signUp({
         email: formData.email,
         password: formData.password,
         first_name: formData.first_name,
@@ -44,13 +51,25 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
         acceptMarketing: formData.acceptMarketing
       });
 
-      if (result.error) {
-        throw result.error;
+      if (signUpResult.error) {
+        throw signUpResult.error;
+      }
+
+      // Link the order to the user
+      const user = useAuthStore.getState().user;
+      if (user) {
+        const linkResult = await authService.linkOrderToUser({
+          orderId,
+          userId: user.id
+        });
+        if (linkResult.error) {
+          throw linkResult.error;
+        }
       }
 
       onSuccess();
     } catch (error: any) {
-      console.error('Sign up error:', error);
+      console.error('Payment sign up error:', error);
       setError(error.message || 'Failed to create account');
     } finally {
       setLoading(false);
@@ -196,7 +215,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
         fullWidth
         disabled={loading}
       >
-        {loading ? 'Creating account...' : 'Create Account'}
+        {loading ? 'Creating account...' : 'Create Account & Link Order'}
       </Button>
 
       <p className="text-center text-sm text-gray-400">
@@ -213,4 +232,4 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
   );
 };
 
-export default SignUpForm;
+export default PaymentSignUpForm;

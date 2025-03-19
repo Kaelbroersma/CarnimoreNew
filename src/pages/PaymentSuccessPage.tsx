@@ -5,7 +5,7 @@ import { CheckCircle, Package, ArrowRight, Calendar, Clock, User } from 'lucide-
 import { useAuthStore } from '../store/authStore';
 import { callNetlifyFunction } from '../lib/supabase';
 import Button from '../components/Button';
-import AuthModal from '../components/Auth/AuthModal';
+import PaymentAuthModal from '../components/Payment/PaymentAuthModal';
 
 const PaymentSuccessPage: React.FC = () => {
   const location = useLocation();
@@ -239,11 +239,12 @@ const PaymentSuccessPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Auth Modal */}
-      <AuthModal
+      {/* Payment Auth Modal */}
+      <PaymentAuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
+        orderId={state.orderId}
       />
     </div>
   );
