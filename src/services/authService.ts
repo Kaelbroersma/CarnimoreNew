@@ -10,15 +10,18 @@ export const authService = {
         throw new Error('Terms must be accepted to create an account');
       }
 
-      const result = await callNetlifyFunction('signUp', {
-        email,
-        password,
-        options: {
-          data: {
-            first_name,
-            last_name,
-            acceptedTerms,
-            acceptMarketing
+      const result = await callNetlifyFunction('supabase-client', {
+        action: 'signUp',
+        payload: {
+          email,
+          password,
+          options: {
+            data: {
+              first_name,
+              last_name,
+              acceptedTerms,
+              acceptMarketing
+            }
           }
         }
       });
@@ -55,9 +58,12 @@ export const authService = {
 
   async signIn({ email, password, orderId }: SignInData): Promise<Result<void>> {
     try {
-      const result = await callNetlifyFunction('signIn', {
-        email,
-        password
+      const result = await callNetlifyFunction('supabase-client', {
+        action: 'signIn',
+        payload: {
+          email,
+          password
+        }
       });
 
       if (result.error) throw result.error;

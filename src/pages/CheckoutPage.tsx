@@ -8,7 +8,6 @@ import PaymentProcessingModal from '../components/PaymentProcessingModal';
 import { useOrderPolling } from '../hooks/useOrderPolling';
 import Button from '../components/Button';
 
-// US State abbreviations for validation
 const US_STATES = [
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
   'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
@@ -67,7 +66,7 @@ const CheckoutPage: React.FC = () => {
   const [stateError, setStateError] = useState<string | null>(null);
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const tax = subtotal * 0.08; // 8% tax
+  const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
   const [formData, setFormData] = useState({
@@ -96,7 +95,6 @@ const CheckoutPage: React.FC = () => {
     sameAsShipping: true
   });
 
-  // Use our polling hook
   useOrderPolling({
     orderId,
     onStatusChange: (status, message) => {
@@ -140,11 +138,9 @@ const CheckoutPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Generate new order ID
     const newOrderId = crypto.randomUUID();
     setOrderId(newOrderId);
 
-    // Validate state before proceeding
     if (!validateState(formData.state)) {
       return;
     }
@@ -160,13 +156,11 @@ const CheckoutPage: React.FC = () => {
     setPaymentMessage(null);
 
     try {
-      // Validate required fields
       if (!formData.cardNumber?.trim() || !formData.expiryMonth?.trim() || 
           !formData.expiryYear?.trim() || !formData.cvv?.trim()) {
         throw new Error('Please fill in all payment fields');
       }
 
-      // Process payment
       const paymentData = {
         cardNumber: formData.cardNumber,
         expiryMonth: formData.expiryMonth,
@@ -621,7 +615,6 @@ const CheckoutPage: React.FC = () => {
                 
                 <div className="space-y-4 mb-6">
                   {items.map((item) => (
-                
                     <div key={item.id} className="space-y-2">
                       <div className="flex items-start">
                         <img
@@ -630,7 +623,7 @@ const CheckoutPage: React.FC = () => {
                           className="w-16 h-16 object-cover rounded-sm"
                         />
                         <div className="ml-4 flex-1">
-                          <h3 className="font-medium">{item.name}</h3>
+                          <p className="text-base font-medium">{item.name}</p>
                           <p className="text-gray-400">Qty: {item.quantity}</p>
                           {renderItemOptions(item)}
                         </div>

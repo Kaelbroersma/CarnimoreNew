@@ -96,10 +96,10 @@ const CartDrawer: React.FC = () => {
                       <img
                         src={item.image}
                         alt={item.name}
-                        className="w-20 h-20 object-cover rounded-sm"
+                        className="w-16 h-16 object-cover rounded-sm"
                       />
                       <div className="flex-1">
-                        <h3 className="font-medium mb-1">{item.name}</h3>
+                        <p className="text-base font-medium">{item.name}</p>
                         {/* Display options as line items */}
                         {item.options && Object.entries(item.options).map(([key, value]) => (
                           value && (
