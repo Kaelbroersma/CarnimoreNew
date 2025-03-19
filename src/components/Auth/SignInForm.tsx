@@ -59,7 +59,8 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode }) => {
 
       onSuccess();
     } catch (error: any) {
-      setError(error.message);
+      console.error('Sign in error:', error);
+      setError(error.message || 'Failed to sign in');
     } finally {
       setLoading(false);
     }

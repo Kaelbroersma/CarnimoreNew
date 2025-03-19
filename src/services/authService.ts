@@ -15,6 +15,8 @@ export const authService = {
         payload: {
           email,
           password,
+          first_name,
+          last_name,
           options: {
             data: {
               first_name,

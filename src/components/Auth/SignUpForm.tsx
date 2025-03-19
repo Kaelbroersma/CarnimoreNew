@@ -73,7 +73,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
 
       onSuccess();
     } catch (error: any) {
-      setError(error.message);
+      console.error('Sign up error:', error);
+      setError(error.message || 'Failed to create account');
     } finally {
       setLoading(false);
     }
