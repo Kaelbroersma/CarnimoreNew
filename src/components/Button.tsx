@@ -24,7 +24,7 @@ const Button: React.FC<ButtonProps> = ({
   disabled = false,
   fullWidth = false,
 }) => {
-  const baseClasses = 'font-medium transition-all duration-300 angular-button';
+  const baseClasses = 'font-heading transition-all duration-300 angular-button';
   
   const variantClasses = {
     primary: 'bg-tan text-black hover:bg-opacity-90',

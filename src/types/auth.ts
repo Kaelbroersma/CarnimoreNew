@@ -22,9 +22,11 @@ export interface SignUpData {
   last_name: string;
   acceptedTerms: boolean;
   acceptMarketing?: boolean;
+  orderId?: string; // Optional orderId for linking after signup
 }
 
 export interface SignInData {
   email: string;
   password: string;
+  orderId?: string; // Optional orderId for linking after login
 }

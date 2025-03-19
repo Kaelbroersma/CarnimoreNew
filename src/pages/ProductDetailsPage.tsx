@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useProductStore } from '../store/productStore';
 import { useDuracoatStore } from '../store/duracoatStore';
 import { useMerchStore } from '../store/merchStore';
@@ -162,6 +162,13 @@ const ProductDetailsPage: React.FC = () => {
     }
   };
 
+  // Parse specifications from JSON if they exist
+  const specifications = product?.specifications ? 
+    (Array.isArray(product.specifications) ? 
+      product.specifications : 
+      JSON.parse(product.specifications as string)
+    ) : null;
+
   if (!product || loading) return null;
 
   return (
@@ -264,6 +271,42 @@ const ProductDetailsPage: React.FC = () => {
                 </span>
               )}
             </div>
+
+            {/* Specifications Section */}
+            {specifications && specifications.length > 0 && (
+              <div className="mb-8">
+                <button
+                  onClick={() => setShowSpecs(!showSpecs)}
+                  className="w-full flex items-center justify-between p-4 bg-gunmetal hover:bg-gunmetal-light transition-colors rounded-sm"
+                >
+                  <span className="font-heading text-lg">Specifications</span>
+                  {showSpecs ? (
+                    <ChevronUp className="text-tan" size={20} />
+                  ) : (
+                    <ChevronDown className="text-tan" size={20} />
+                  )}
+                </button>
+                
+                {showSpecs && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="bg-gunmetal-dark p-4 mt-2 rounded-sm"
+                  >
+                    <ul className="space-y-2">
+                      {specifications.map((spec: string, index: number) => (
+                        <li key={index} className="flex items-start">
+                          <span className="text-tan mr-2">•</span>
+                          <span className="text-gray-300">{spec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </motion.div>
+                )}
+              </div>
+            )}
 
             {/* Product Options */}
             <OptionSelector

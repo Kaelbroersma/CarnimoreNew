@@ -33,11 +33,10 @@ const WhyChooseUs: React.FC = () => {
     <section className="relative py-20 overflow-hidden gradient-why-choose">
       {/* Carbon fiber pattern overlay */}
       <div 
-        className="absolute inset-0 bg-repeat opacity-20"
+        className="absolute inset-0 bg-repeat opacity-30 mix-blend-screen"
         style={{
           backgroundImage: 'url("/img/real-carbon-fibre.png")',
-          backgroundSize: '200px',
-          mixBlendMode: 'screen'
+          backgroundSize: '200px'
         }}
       />
 

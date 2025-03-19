@@ -12,6 +12,8 @@ import AboutPage from './pages/AboutPage';
 import GalleryPage from './pages/GalleryPage';
 import ContactPage from './pages/ContactPage';
 import AccountPage from './pages/AccountPage';
+import AccountOrdersPage from './pages/AccountOrdersPage';
+import AccountWishlistPage from './pages/AccountWishlistPage';
 import NotFoundPage from './pages/NotFoundPage';
 import TrainingPage from './pages/TrainingPage';
 import InfoPage from './pages/InfoPage';
@@ -85,14 +87,16 @@ function App() {
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/gallery" element={<GalleryPage />} />
                 <Route path="/contact" element={<ContactPage />} />
+                
+                {/* Account routes */}
                 <Route path="/account" element={<AccountPage />} />
+                <Route path="/account/orders" element={<AccountOrdersPage />} />
+                <Route path="/account/wishlist" element={<AccountWishlistPage />} />
+                
                 <Route path="/training" element={<TrainingPage />} />
                 <Route path="/info" element={<InfoPage />} />
                 <Route path="/legal" element={<LegalPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
-                <Route path="/payment/success" element={<PaymentSuccessPage />} />
-                <Route path="/payment/declined" element={<PaymentDeclinedPage />} />
-                <Route path="/payment/error" element={<PaymentErrorPage />} />
                 <Route path="/payment/success" element={<PaymentSuccessPage />} />
                 <Route path="/payment/declined" element={<PaymentDeclinedPage />} />
                 <Route path="/payment/error" element={<PaymentErrorPage />} />

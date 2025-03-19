@@ -59,7 +59,7 @@ const HeroSection: React.FC = () => {
         className="absolute inset-0 z-5 bg-cover bg-center bg-no-repeat"
         style={{ 
           backgroundImage: 'url("/img/Hero-Main.jpg")',
-          filter: 'contrast(1.1) brightness(0.7)',
+          filter: 'contrast(1.1) brightness(0.6)',
           y: backgroundY,
           willChange: 'transform' // Optimize for animations
         }}
@@ -114,14 +114,14 @@ const HeroSection: React.FC = () => {
             custom={0}
           >
             <motion.span 
-              className="block"
+              className="text-white block text-[1.25em] text-shadow-lg"
               variants={headingVariants}
               custom={1}
             >
               Custom Quality
             </motion.span>
             <motion.span 
-              className="text-tan block"
+              className="text-tan block text-[1.25em] text-shadow-lg" // Increased size by 1.5x
               variants={headingVariants}
               custom={2}
             >
@@ -138,7 +138,7 @@ const HeroSection: React.FC = () => {
           />
           
           <motion.p
-            className="text-gray-200 text-base md:text-xl mb-8 md:mb-10 max-w-2xl mx-auto leading-relaxed"
+            className="text-gray-200 text-base md:text-xl mb-8 md:mb-10 max-w-2xl mx-auto leading-relaxed text-shadow-lg"
             variants={headingVariants}
             custom={3}
           >

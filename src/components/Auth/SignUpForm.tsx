@@ -4,6 +4,7 @@ import { Mail, Lock, User, AlertCircle } from 'lucide-react';
 import { authService } from '../../services/authService';
 import Button from '../Button';
 import { useMobileDetection } from '../MobileDetection';
+import { useLocation } from 'react-router-dom';
 
 interface SignUpFormProps {
   onSuccess: () => void;
@@ -22,6 +23,11 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isMobile = useMobileDetection();
+  const location = useLocation();
+
+  // Get orderId from location state if we're on the payment success page
+  const orderId = location.pathname === '/payment/success' ? 
+    (location.state as any)?.orderId : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +46,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
       first_name: formData.first_name,
       last_name: formData.last_name,
       acceptedTerms: formData.acceptedTerms,
-      acceptMarketing: formData.acceptMarketing
+      acceptMarketing: formData.acceptMarketing,
+      orderId // Pass orderId if it exists
     });
     
     if (result.error) {

@@ -42,7 +42,7 @@ const Logo: React.FC<LogoProps> = ({ size = 'medium', disableAnimation = false }
         <div className="absolute inset-0 bg-tan opacity-0 blur-xl group-hover:opacity-30 transition-all duration-500 z-0"></div>
       </div>
       <div className="relative overflow-hidden">
-        <span className={`font-heading font-bold ${textSizes[size]} tracking-wider ${disableAnimation ? '' : 'group-hover:opacity-0 transition-opacity duration-300'}`}>
+        <span className={`font-logo font-bold ${textSizes[size]} tracking-wider ${disableAnimation ? '' : 'group-hover:opacity-0 transition-opacity duration-300'}`}>
           CARNIMORE
         </span>
         

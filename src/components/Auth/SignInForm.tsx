@@ -4,6 +4,7 @@ import { Mail, Lock, AlertCircle } from 'lucide-react';
 import { authService } from '../../services/authService';
 import Button from '../Button';
 import { useMobileDetection } from '../MobileDetection';
+import { useLocation } from 'react-router-dom';
 
 interface SignInFormProps {
   onSuccess: () => void;
@@ -18,13 +19,21 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isMobile = useMobileDetection();
+  const location = useLocation();
+
+  // Get orderId from location state if we're on the payment success page
+  const orderId = location.pathname === '/payment/success' ? 
+    (location.state as any)?.orderId : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const result = await authService.signIn(formData);
+    const result = await authService.signIn({
+      ...formData,
+      orderId // Pass orderId if it exists
+    });
     
     if (result.error) {
       setError(result.error.message);

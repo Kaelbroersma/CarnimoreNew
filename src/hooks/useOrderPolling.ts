@@ -94,7 +94,7 @@ export const useOrderPolling = ({ orderId, onStatusChange }: UseOrderPollingProp
           orderId
         });
 
-        // Wait 2 seconds before first check
+        // Wait 4 seconds before first check
         await new Promise(resolve => setTimeout(resolve, 4000));
         
         if (!isSubscribed) return;
@@ -102,7 +102,7 @@ export const useOrderPolling = ({ orderId, onStatusChange }: UseOrderPollingProp
         // Initial check
         await checkOrderStatus();
         
-        // Poll every 3 seconds
+        // Poll every 4 seconds
         const interval = setInterval(checkOrderStatus, 4000);
         setPollInterval(interval);
         

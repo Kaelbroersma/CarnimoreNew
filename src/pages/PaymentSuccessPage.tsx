@@ -1,19 +1,22 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, Navigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, Package, ArrowRight, Calendar, Clock } from 'lucide-react';
+import { CheckCircle, Package, ArrowRight, Calendar, Clock, User } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { callNetlifyFunction } from '../lib/supabase';
 import Button from '../components/Button';
+import AuthModal from '../components/Auth/AuthModal';
 
 const PaymentSuccessPage: React.FC = () => {
   const location = useLocation();
   const { user } = useAuthStore();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [orderLinked, setOrderLinked] = useState(false);
+  
   const state = location.state as { 
     orderId: string;
-    transactionId?: string;
-    authCode?: string;
-    orderTotal?: number;
     message?: string;
+    orderTotal?: number;
   } | null;
 
   useEffect(() => {
@@ -26,6 +29,40 @@ const PaymentSuccessPage: React.FC = () => {
     return <Navigate to="/shop" replace />;
   }
 
+  // Function to link order to user account
+  const linkOrderToAccount = async (userId: string) => {
+    try {
+      const result = await callNetlifyFunction('supabase-client', {
+        action: 'updateOrder',
+        payload: {
+          orderId: state.orderId,
+          userId
+        }
+      });
+
+      if (result.error) {
+        console.error('Failed to link order:', result.error);
+        return;
+      }
+
+      setOrderLinked(true);
+    } catch (error) {
+      console.error('Error linking order:', error);
+    }
+  };
+
+  // Handle successful auth
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    if (user) {
+      linkOrderToAccount(user.id);
+    }
+  };
+
+  // Calculate estimated delivery date (14 business days from now)
+  const estimatedDelivery = new Date();
+  estimatedDelivery.setDate(estimatedDelivery.getDate() + 14);
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
       weekday: 'long',
@@ -34,10 +71,6 @@ const PaymentSuccessPage: React.FC = () => {
       day: 'numeric'
     }).format(date);
   };
-
-  // Calculate estimated delivery date (14 business days from now)
-  const estimatedDelivery = new Date();
-  estimatedDelivery.setDate(estimatedDelivery.getDate() + 14);
 
   return (
     <div className="pt-24 pb-16 min-h-screen bg-primary">
@@ -89,7 +122,7 @@ const PaymentSuccessPage: React.FC = () => {
             <div className="p-6 border-b border-gunmetal-light">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-heading text-xl font-bold">Order Details</h2>
-                <span className="text-tan">#{state.orderId.slice(0, 8)}</span>
+                <span className="text-tan">#{state.orderId}</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
@@ -100,12 +133,6 @@ const PaymentSuccessPage: React.FC = () => {
                       <p className="font-medium">{formatDate(new Date())}</p>
                     </div>
                   </div>
-                  {state.transactionId && (
-                    <div>
-                      <p className="text-sm text-gray-400">Transaction ID</p>
-                      <p className="font-medium font-mono">{state.transactionId}</p>
-                    </div>
-                  )}
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center">
@@ -115,12 +142,6 @@ const PaymentSuccessPage: React.FC = () => {
                       <p className="font-medium">{formatDate(estimatedDelivery)}</p>
                     </div>
                   </div>
-                  {state.authCode && (
-                    <div>
-                      <p className="text-sm text-gray-400">Authorization Code</p>
-                      <p className="font-medium font-mono">{state.authCode}</p>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -137,12 +158,48 @@ const PaymentSuccessPage: React.FC = () => {
             </div>
           </motion.div>
 
+          {/* Guest User Call to Action */}
+          {!user && !orderLinked && (
+            <motion.div
+              className="bg-gunmetal p-6 rounded-sm shadow-luxury mb-8 text-center"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.6 }}
+            >
+              <User className="w-12 h-12 text-tan mx-auto mb-4" />
+              <h3 className="font-heading text-xl font-bold mb-2">Create an Account</h3>
+              <p className="text-gray-300 mb-4">
+                Sign up or log in now to track your order status and access your order history.
+                Your order will be automatically linked to your account.
+              </p>
+              <Button
+                variant="primary"
+                onClick={() => setShowAuthModal(true)}
+              >
+                Sign Up / Log In
+              </Button>
+            </motion.div>
+          )}
+
+          {/* Order Linked Confirmation */}
+          {orderLinked && (
+            <motion.div
+              className="bg-green-900/30 border border-green-700 p-4 rounded-sm mb-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <p className="text-green-300 text-center">
+                Order successfully linked to your account! You can now track your order status in your account dashboard.
+              </p>
+            </motion.div>
+          )}
+
           {/* Next Steps */}
           <motion.div
             className="text-center space-y-6"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.7 }}
           >
             <p className="text-gray-300">
               We'll send you an email confirmation with your order details and tracking information once your order ships.
@@ -153,7 +210,10 @@ const PaymentSuccessPage: React.FC = () => {
                   View Order Status
                 </Button>
               ) : (
-                <Button to="/account" variant="primary">
+                <Button
+                  onClick={() => setShowAuthModal(true)}
+                  variant="primary"
+                >
                   Create Account to Track Orders
                 </Button>
               )}
@@ -168,7 +228,7 @@ const PaymentSuccessPage: React.FC = () => {
             className="mt-12 text-center"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.7 }}
+            transition={{ delay: 0.8 }}
           >
             <p className="text-gray-400 mb-2">Need help with your order?</p>
             <Link 
@@ -181,6 +241,13 @@ const PaymentSuccessPage: React.FC = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   );
 };

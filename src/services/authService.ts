@@ -42,11 +42,12 @@ export const authService = {
     }
   },
 
-  async signIn({ email, password }: SignInData): Promise<Result<void>> {
+  async signIn({ email, password, orderId }: SignInData & { orderId?: string }): Promise<Result<void>> {
     try {
       const result = await callNetlifyFunction('signIn', {
         email,
-        password
+        password,
+        orderId // Pass orderId to link after successful login
       });
 
       if (result.error) throw result.error;

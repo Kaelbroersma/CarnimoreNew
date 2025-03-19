@@ -51,8 +51,8 @@ const AgeVerification: React.FC<AgeVerificationProps> = ({ onAccept, onDecline }
         <div className="h-px bg-tan/30 w-full mb-4 md:mb-6"></div>
         
         <p className="text-white mb-4 md:mb-6 text-center text-sm md:text-base">
-          Welcome to Carnimore. You must be at least 21 years old to view our custom craftsmanship. 
-          By continuing, you agree to our cookie policy.
+          Welcome to Carnimore. You must be at least 18 years of age to view our custom craftsmanship. 
+          By continuing, you also agree to our cookie policy.
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center">

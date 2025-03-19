@@ -22,7 +22,8 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
-        heading: ['Montserrat', 'sans-serif']
+        heading: ['Nippo-Variable', 'Nippo-Regular', 'sans-serif'],
+        logo: ['Montserrat', 'sans-serif']
       },
       boxShadow: {
         'sharp': '0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1)',
@@ -33,5 +34,24 @@ export default {
       }
     },
   },
-  plugins: [],
+  plugins: [
+    function ({ addUtilities }) {
+      const newUtilities = {
+        '.text-shadow-sm': {
+          textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)',
+        },
+        '.text-shadow-md': {
+          textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
+        },
+        '.text-shadow-lg': {
+          textShadow: '3px 3px 6px rgba(0, 0, 0, 0.7)',
+        },
+        '.text-shadow-none': {
+          textShadow: 'none',
+        },
+      };
+
+      addUtilities(newUtilities, ['responsive', 'hover']);
+    },
+  ],
 };
