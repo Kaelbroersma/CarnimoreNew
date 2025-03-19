@@ -1,10 +1,19 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { Package, ArrowLeft, Truck, Clock, AlertCircle, ShoppingBag } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { callNetlifyFunction } from '../lib/supabase';
 import Button from '../components/Button';
+
+interface OrderItem {
+  product_id: string;
+  name: string;
+  quantity: number;
+  price: number;
+  total: number;
+  options?: Record<string, any>;
+}
 
 interface Order {
   order_id: string;
@@ -15,18 +24,10 @@ interface Order {
   order_date: string;
   payment_method: string;
   tracking_number?: string;
-  order_items: Array<{
-    product_id: string;
-    name: string;
-    quantity: number;
-    price: number;
-    total: number;
-    options?: Record<string, any>;
-  }>;
+  order_items: OrderItem[];
 }
 
 const AccountOrdersPage: React.FC = () => {
-  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,12 +35,16 @@ const AccountOrdersPage: React.FC = () => {
 
   useEffect(() => {
     if (!user) {
-      navigate('/');
       return;
     }
 
     const fetchOrders = async () => {
       try {
+        console.log('Fetching orders for user:', {
+          timestamp: new Date().toISOString(),
+          userId: user.id
+        });
+
         const result = await callNetlifyFunction('supabase-client', {
           action: 'getOrders',
           payload: { userId: user.id }
@@ -48,8 +53,15 @@ const AccountOrdersPage: React.FC = () => {
         if (result.error) {
           throw new Error(result.error.message);
         }
+
+        console.log('Orders fetched successfully:', {
+          timestamp: new Date().toISOString(),
+          orderCount: result.data?.length || 0
+        });
+
         setOrders(result.data || []);
       } catch (error: any) {
+        console.error('Error fetching orders:', error);
         setError(error.message);
       } finally {
         setLoading(false);
@@ -57,7 +69,46 @@ const AccountOrdersPage: React.FC = () => {
     };
 
     fetchOrders();
-  }, [user, navigate]);
+  }, [user]);
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatOptionLabel = (key: string, value: any): string => {
+    switch (key) {
+      case 'caliber':
+        return `Caliber: ${value}`;
+      case 'colors':
+        return `Colors: ${value}`;
+      case 'longAction':
+        return 'Long Action';
+      case 'deluxeVersion':
+        return 'Deluxe Version';
+      case 'grip':
+        return `Grip: ${value}`;
+      case 'stock':
+        return `Stock: ${value}`;
+      case 'handGuard':
+        return `Handguard: ${value}`;
+      case 'color':
+        return `Color: ${value}`;
+      case 'size':
+        return `Size: ${value}`;
+      default:
+        return '';
+    }
+  };
 
   const getStatusColor = (status: Order['order_status']) => {
     switch (status) {
@@ -72,25 +123,6 @@ const AccountOrdersPage: React.FC = () => {
     }
   };
 
-  const getPaymentStatusColor = (status: Order['payment_status']) => {
-    switch (status) {
-      case 'paid':
-        return 'text-green-400';
-      case 'failed':
-        return 'text-red-400';
-      default:
-        return 'text-yellow-400';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
   return (
     <div className="pt-24 pb-16">
       <div className="container mx-auto px-4">
@@ -98,12 +130,14 @@ const AccountOrdersPage: React.FC = () => {
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center">
-              <button
-                onClick={() => navigate('/account')}
-                className="mr-4 text-gray-400 hover:text-white transition-colors"
+              <Button
+                variant="outline"
+                onClick={() => window.history.back()}
+                className="mr-4"
               >
-                <ArrowLeft size={24} />
-              </button>
+                <ArrowLeft size={20} className="mr-2" />
+                Back
+              </Button>
               <h1 className="font-heading text-2xl font-bold">Your Orders</h1>
             </div>
           </div>
@@ -134,7 +168,7 @@ const AccountOrdersPage: React.FC = () => {
                   <p className="text-gray-400 mb-6">Place an order to see your order history here.</p>
                   <Button
                     variant="primary"
-                    onClick={() => navigate('/shop')}
+                    onClick={() => window.location.href = '/shop'}
                   >
                     Start Shopping
                   </Button>
@@ -160,9 +194,6 @@ const AccountOrdersPage: React.FC = () => {
                           <span className={getStatusColor(order.order_status)}>
                             {order.order_status.charAt(0).toUpperCase() + order.order_status.slice(1)}
                           </span>
-                          <span className={getPaymentStatusColor(order.payment_status)}>
-                            Payment: {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
-                          </span>
                         </div>
                       </div>
                       <div className="mt-4 md:mt-0">
@@ -184,18 +215,19 @@ const AccountOrdersPage: React.FC = () => {
                               {item.options && Object.entries(item.options).map(([key, value]) => (
                                 value && (
                                   <p key={key} className="text-sm text-gray-400">
-                                    {key.charAt(0).toUpperCase() + key.slice(1)}: {value}
+                                    {formatOptionLabel(key, value)}
                                   </p>
                                 )
                               ))}
                             </div>
-                            <span className="text-tan">${item.total.toFixed(2)}</span>
+                            <span className="text-tan">${(item.price * item.quantity).toFixed(2)}</span>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="border-t border-gunmetal-light pt-4 space-y-2">
+                    {/* Shipping Information */}
+                    <div className="border-t border-gunmetal-light pt-4">
                       <div className="flex items-start">
                         <Truck className="text-tan mr-2 flex-shrink-0 mt-1" size={18} />
                         <div>
@@ -204,7 +236,7 @@ const AccountOrdersPage: React.FC = () => {
                         </div>
                       </div>
                       {order.tracking_number && (
-                        <div className="flex items-center">
+                        <div className="flex items-center mt-2">
                           <Package className="text-tan mr-2" size={18} />
                           <div>
                             <p className="text-sm text-gray-400">Tracking Number:</p>

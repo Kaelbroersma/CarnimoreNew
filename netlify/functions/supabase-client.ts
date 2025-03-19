@@ -251,6 +251,71 @@ export const handler: Handler = async (event) => {
           };
         }
 
+      case 'getOrders':
+        try {
+          if (!payload.userId) {
+            throw new Error('Missing userId parameter');
+          }
+
+          console.log('Fetching orders for user:', {
+            timestamp: new Date().toISOString(),
+            userId: payload.userId
+          });
+
+          // Fetch orders with order items for the specified user
+          const { data: orders, error: ordersError } = await supabase
+            .from('orders')
+            .select(`
+              *,
+              order_items (
+                product_id,
+                name,
+                quantity,
+                price,
+                total,
+                options
+              )
+            `)
+            .eq('user_id', payload.userId)
+            .order('order_date', { ascending: false });
+
+          if (ordersError) {
+            console.error('Error fetching orders:', {
+              timestamp: new Date().toISOString(),
+              error: ordersError,
+              userId: payload.userId
+            });
+            throw ordersError;
+          }
+
+          console.log('Orders fetched successfully:', {
+            timestamp: new Date().toISOString(),
+            userId: payload.userId,
+            orderCount: orders?.length || 0
+          });
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ data: orders })
+          };
+        } catch (error: any) {
+          console.error('Error in getOrders:', {
+            timestamp: new Date().toISOString(),
+            error: error.message
+          });
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to fetch orders',
+                details: error.message
+              }
+            })
+          };
+        }
+
       case 'getProducts':
         try {
           if (!payload.categorySlug) {
