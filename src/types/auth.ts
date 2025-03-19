@@ -13,6 +13,8 @@ export interface AuthState {
   user: AuthUser | null;
   loading: boolean;
   error: string | null;
+  initialize: () => Promise<void>;
+  setUser: (user: AuthUser | null) => void;
 }
 
 export interface SignUpData {
@@ -22,11 +24,14 @@ export interface SignUpData {
   last_name: string;
   acceptedTerms: boolean;
   acceptMarketing?: boolean;
-  orderId?: string; // Optional orderId for linking after signup
 }
 
 export interface SignInData {
   email: string;
   password: string;
-  orderId?: string; // Optional orderId for linking after login
+}
+
+export interface OrderLinkData {
+  orderId: string;
+  userId: string;
 }

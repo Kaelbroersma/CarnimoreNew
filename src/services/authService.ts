@@ -1,5 +1,5 @@
 import { callNetlifyFunction } from '../lib/supabase';
-import type { SignUpData, SignInData } from '../types/auth';
+import type { SignUpData, SignInData, OrderLinkData } from '../types/auth';
 import type { Result } from '../types/database';
 import { useAuthStore } from '../store/authStore';
 
@@ -97,7 +97,7 @@ export const authService = {
     }
   },
 
-  async linkOrderToUser(orderId: string, userId: string): Promise<Result<void>> {
+  async linkOrderToUser({ orderId, userId }: OrderLinkData): Promise<Result<void>> {
     try {
       const result = await callNetlifyFunction('supabase-client', {
         action: 'updateOrder',

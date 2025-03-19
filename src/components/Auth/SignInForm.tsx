@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 import { authService } from '../../services/authService';
+import { useAuthStore } from '../../store/authStore';
 import Button from '../Button';
 import { useMobileDetection } from '../MobileDetection';
 import { useLocation } from 'react-router-dom';
@@ -45,7 +46,10 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode }) => {
       if (orderId && location.pathname === '/payment/success') {
         const user = useAuthStore.getState().user;
         if (user) {
-          const linkResult = await authService.linkOrderToUser(orderId, user.id);
+          const linkResult = await authService.linkOrderToUser({
+            orderId,
+            userId: user.id
+          });
           if (linkResult.error) {
             console.error('Failed to link order:', linkResult.error);
             // Don't throw - we still want the sign in to be considered successful
@@ -56,6 +60,7 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode }) => {
       onSuccess();
     } catch (error: any) {
       setError(error.message);
+    } finally {
       setLoading(false);
     }
   };
