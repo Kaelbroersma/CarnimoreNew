@@ -84,12 +84,23 @@ export const handler: Handler = async (event) => {
       throw new Error('Missing required fields');
     }
 
+    // Format order items for JSONB storage
+    const formattedOrderItems = items.map(item => ({
+      product_id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      total: item.price * item.quantity,
+      options: item.options || {}
+    }));
+
     // Create initial order record in Supabase
     console.log('Creating order record:', { 
       timestamp: new Date().toISOString(), 
       orderId,
       userId,
-      amount 
+      amount,
+      items: formattedOrderItems
     });
 
     const { error: orderError } = await supabase
@@ -105,7 +116,8 @@ export const handler: Handler = async (event) => {
         payment_method: 'credit_card',
         shipping_method: 'standard',
         order_status: 'pending',
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        order_items: formattedOrderItems // Store order items directly in orders table
       })
       .select()
       .single();
@@ -120,42 +132,11 @@ export const handler: Handler = async (event) => {
       throw new Error(`Failed to create order: ${orderError.message}`);
     }
 
-    console.log('Order created successfully:', { timestamp: new Date().toISOString(), orderId });
-
-    // Create order items
-    console.log('Creating order items:', {
-      timestamp: new Date().toISOString(),
+    console.log('Order created successfully:', { 
+      timestamp: new Date().toISOString(), 
       orderId,
-      itemCount: items.length,
-      items: items.map(item => ({
-        id: item.id,
-        quantity: item.quantity,
-        price: item.price
-      }))
+      itemCount: formattedOrderItems.length
     });
-
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(items.map(item => ({
-        order_id: orderId,
-        product_id: item.id,
-        quantity: item.quantity,
-        price_at_time_of_order: item.price,
-        total_price: item.price * item.quantity,
-        options: item.options
-      })))
-      .select();
-
-    if (itemsError) {
-      console.error('Failed to create order items:', {
-        timestamp: new Date().toISOString(),
-        error: itemsError,
-        orderId
-      });
-      throw new Error(`Failed to create order items: ${itemsError.message}`);
-    }
-
-    console.log('Order items created successfully:', { timestamp: new Date().toISOString(), orderId });
 
     // Build payment processor request payload
     const params = new URLSearchParams({

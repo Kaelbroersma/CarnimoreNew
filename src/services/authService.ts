@@ -4,7 +4,7 @@ import type { Result } from '../types/database';
 import { useAuthStore } from '../store/authStore';
 
 export const authService = {
-  async signUp({ email, password, first_name, last_name, acceptedTerms, acceptMarketing }: SignUpData): Promise<Result<void>> {
+  async signUp({ email, password, first_name, last_name, acceptedTerms, acceptMarketing, orderId }: SignUpData): Promise<Result<void>> {
     try {
       if (!acceptedTerms) {
         throw new Error('Terms must be accepted to create an account');
@@ -28,6 +28,17 @@ export const authService = {
       // Set user in auth store immediately
       if (result.data?.user) {
         useAuthStore.getState().setUser(result.data.user);
+
+        // If orderId exists, link it to the new user
+        if (orderId) {
+          await callNetlifyFunction('supabase-client', {
+            action: 'updateOrder',
+            payload: {
+              orderId,
+              userId: result.data.user.id
+            }
+          });
+        }
       }
 
       return { data: null, error: null };
@@ -42,12 +53,11 @@ export const authService = {
     }
   },
 
-  async signIn({ email, password, orderId }: SignInData & { orderId?: string }): Promise<Result<void>> {
+  async signIn({ email, password, orderId }: SignInData): Promise<Result<void>> {
     try {
       const result = await callNetlifyFunction('signIn', {
         email,
-        password,
-        orderId // Pass orderId to link after successful login
+        password
       });
 
       if (result.error) throw result.error;
@@ -55,6 +65,17 @@ export const authService = {
       // Set user in auth store immediately
       if (result.data?.user) {
         useAuthStore.getState().setUser(result.data.user);
+
+        // If orderId exists, link it to the user
+        if (orderId) {
+          await callNetlifyFunction('supabase-client', {
+            action: 'updateOrder',
+            payload: {
+              orderId,
+              userId: result.data.user.id
+            }
+          });
+        }
       }
 
       return { data: null, error: null };

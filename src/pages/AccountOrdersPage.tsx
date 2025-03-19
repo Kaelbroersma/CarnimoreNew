@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Package, ArrowLeft, Truck, Clock, AlertCircle } from 'lucide-react';
+import { Package, ArrowLeft, Truck, Clock, AlertCircle, ShoppingBag } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { callNetlifyFunction } from '../lib/supabase';
+import Button from '../components/Button';
 
 interface Order {
   order_id: string;
@@ -14,6 +15,14 @@ interface Order {
   order_date: string;
   payment_method: string;
   tracking_number?: string;
+  order_items: Array<{
+    product_id: string;
+    name: string;
+    quantity: number;
+    price: number;
+    total: number;
+    options?: Record<string, any>;
+  }>;
 }
 
 const AccountOrdersPage: React.FC = () => {
@@ -39,7 +48,6 @@ const AccountOrdersPage: React.FC = () => {
         if (result.error) {
           throw new Error(result.error.message);
         }
-
         setOrders(result.data || []);
       } catch (error: any) {
         setError(error.message);
@@ -75,6 +83,14 @@ const AccountOrdersPage: React.FC = () => {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
   return (
     <div className="pt-24 pb-16">
       <div className="container mx-auto px-4">
@@ -102,11 +118,9 @@ const AccountOrdersPage: React.FC = () => {
 
           {/* Error State */}
           {error && (
-            <div className="bg-red-900/30 border border-red-700 rounded-sm p-4 mb-6">
-              <div className="flex items-center">
-                <AlertCircle className="text-red-400 mr-2" size={20} />
-                <p className="text-red-300">{error}</p>
-              </div>
+            <div className="bg-red-900/30 border border-red-700 rounded-sm p-4 mb-6 flex items-start">
+              <AlertCircle className="text-red-400 mr-2 flex-shrink-0 mt-0.5" size={20} />
+              <p className="text-red-300">{error}</p>
             </div>
           )}
 
@@ -115,9 +129,15 @@ const AccountOrdersPage: React.FC = () => {
             <div className="space-y-6">
               {orders.length === 0 ? (
                 <div className="text-center py-12 bg-gunmetal rounded-sm">
-                  <Package className="text-tan mx-auto mb-4" size={32} />
+                  <ShoppingBag className="text-tan mx-auto mb-4" size={32} />
                   <h3 className="font-heading text-xl font-bold mb-2">No Orders Yet</h3>
-                  <p className="text-gray-400">Start shopping to see your orders here.</p>
+                  <p className="text-gray-400 mb-6">Place an order to see your order history here.</p>
+                  <Button
+                    variant="primary"
+                    onClick={() => navigate('/shop')}
+                  >
+                    Start Shopping
+                  </Button>
                 </div>
               ) : (
                 orders.map((order) => (
@@ -135,7 +155,7 @@ const AccountOrdersPage: React.FC = () => {
                         <div className="flex items-center space-x-4 text-sm">
                           <span className="text-gray-400">
                             <Clock size={16} className="inline mr-1" />
-                            {new Date(order.order_date).toLocaleDateString()}
+                            {formatDate(order.order_date)}
                           </span>
                           <span className={getStatusColor(order.order_status)}>
                             {order.order_status.charAt(0).toUpperCase() + order.order_status.slice(1)}
@@ -149,6 +169,29 @@ const AccountOrdersPage: React.FC = () => {
                         <span className="text-tan text-xl font-bold">
                           ${order.total_amount.toFixed(2)}
                         </span>
+                      </div>
+                    </div>
+
+                    {/* Order Items */}
+                    <div className="border-t border-gunmetal-light pt-4 mb-4">
+                      <h4 className="font-medium mb-3">Order Items:</h4>
+                      <div className="space-y-3">
+                        {order.order_items.map((item, index) => (
+                          <div key={index} className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium">{item.name}</p>
+                              <p className="text-sm text-gray-400">Quantity: {item.quantity}</p>
+                              {item.options && Object.entries(item.options).map(([key, value]) => (
+                                value && (
+                                  <p key={key} className="text-sm text-gray-400">
+                                    {key.charAt(0).toUpperCase() + key.slice(1)}: {value}
+                                  </p>
+                                )
+                              ))}
+                            </div>
+                            <span className="text-tan">${item.total.toFixed(2)}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
 

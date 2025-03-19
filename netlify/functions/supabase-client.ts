@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { Handler } from '@netlify/functions';
+import { createClient } from '@supabase/supabase-js';
 
 // Validate environment variables
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -308,7 +308,7 @@ export const handler: Handler = async (event) => {
         });
 
         // Use upsert operation
-        const { error: updateError } = await supabase
+        const { error: updateCartError } = await supabase
           .from('shopping_cart')
           .upsert(
           {
@@ -321,9 +321,9 @@ export const handler: Handler = async (event) => {
             ignoreDuplicates: false
           });
 
-        if (updateError) {
-          console.error('Failed to update cart:', updateError);
-          throw updateError;
+        if (updateCartError) {
+          console.error('Failed to update cart:', updateCartError);
+          throw updateCartError;
         }
 
         console.log('Cart updated successfully');
@@ -403,8 +403,15 @@ export const handler: Handler = async (event) => {
         const { data: order, error: orderError } = await supabase
           .from('orders')
           .select(`
-            *,
+            order_id,
+            order_date,
+            total_amount,
             payment_status,
+            order_status,
+            shipping_address,
+            shipping_method,
+            tracking_number,
+            payment_method,
             payment_processor_response,
             response_message
           `)
@@ -417,6 +424,60 @@ export const handler: Handler = async (event) => {
           statusCode: 200,
           headers,
           body: JSON.stringify({ data: order })
+        };
+
+      case 'getOrders':
+        if (!payload.userId) {
+          throw new Error('Missing user ID');
+        }
+
+        const { data: orders, error: ordersError } = await supabase
+          .from('orders')
+          .select(`
+            order_id,
+            order_date,
+            total_amount,
+            payment_status,
+            order_status,
+            shipping_address,
+            shipping_method,
+            tracking_number,
+            payment_method,
+            order_items (
+              product_id,
+              quantity,
+              price_at_time_of_order,
+              total_price,
+              options
+            )
+          `)
+          .eq('user_id', payload.userId)
+          .order('order_date', { ascending: false });
+
+        if (ordersError) throw ordersError;
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ data: orders })
+        };
+
+      case 'updateOrder':
+        if (!payload.orderId || !payload.userId) {
+          throw new Error('Missing orderId or userId');
+        }
+
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({ user_id: payload.userId })
+          .eq('order_id', payload.orderId);
+
+        if (updateError) throw updateError;
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ success: true })
         };
 
       default:
