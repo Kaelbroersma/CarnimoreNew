@@ -22,41 +22,36 @@ const PaymentSuccessPage: React.FC = () => {
   useEffect(() => {
     // Scroll to top on mount
     window.scrollTo(0, 0);
-  }, []);
+
+    // Check if order needs to be linked to user
+    const linkOrderToUser = async () => {
+      if (user && state?.orderId && !orderLinked) {
+        try {
+          await callNetlifyFunction('supabase-client', {
+            action: 'updateOrder',
+            payload: {
+              orderId: state.orderId,
+              userId: user.id
+            }
+          });
+          setOrderLinked(true);
+        } catch (error) {
+          console.error('Failed to link order:', error);
+        }
+      }
+    };
+
+    linkOrderToUser();
+  }, [user, state?.orderId, orderLinked]);
 
   // Redirect if accessed directly without state
   if (!state) {
     return <Navigate to="/shop" replace />;
   }
 
-  // Function to link order to user account
-  const linkOrderToAccount = async (userId: string) => {
-    try {
-      const result = await callNetlifyFunction('supabase-client', {
-        action: 'updateOrder',
-        payload: {
-          orderId: state.orderId,
-          userId
-        }
-      });
-
-      if (result.error) {
-        console.error('Failed to link order:', result.error);
-        return;
-      }
-
-      setOrderLinked(true);
-    } catch (error) {
-      console.error('Error linking order:', error);
-    }
-  };
-
   // Handle successful auth
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    if (user) {
-      linkOrderToAccount(user.id);
-    }
   };
 
   // Calculate estimated delivery date (14 business days from now)

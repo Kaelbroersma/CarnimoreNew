@@ -32,8 +32,8 @@ export const authService = {
       if (result.data?.user) {
         useAuthStore.getState().setUser(result.data.user);
 
-        // If orderId exists, link it to the new user
-        if (orderId) {
+        // Only link order if we're on payment success page
+        if (orderId && window.location.pathname === '/payment/success') {
           await callNetlifyFunction('supabase-client', {
             action: 'updateOrder',
             payload: {
@@ -72,8 +72,8 @@ export const authService = {
       if (result.data?.user) {
         useAuthStore.getState().setUser(result.data.user);
 
-        // If orderId exists, link it to the user
-        if (orderId) {
+        // Only link order if we're on payment success page
+        if (orderId && window.location.pathname === '/payment/success') {
           await callNetlifyFunction('supabase-client', {
             action: 'updateOrder',
             payload: {
