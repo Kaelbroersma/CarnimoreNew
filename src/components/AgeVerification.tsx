@@ -67,13 +67,13 @@ const AgeVerification: React.FC<AgeVerificationProps> = ({ onAccept, onDecline }
             onClick={handleAccept}
             className="bg-tan text-black hover:bg-tan/90 font-medium transition-all duration-200 px-6 py-3 text-base rounded-sm"
           >
-            I'm 21+ & Ready
+            I'm 18+ & Ready
           </button>
         </div>
         
         <div className="mt-4 md:mt-6 text-center">
           <p className="text-white text-xs md:text-sm">
-            By clicking "I'm 21+ & Ready", you confirm that you are of legal age.
+            By clicking "I'm 18+ & Ready", you confirm that you are of legal age.
           </p>
         </div>
       </div>
