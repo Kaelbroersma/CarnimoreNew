@@ -34,29 +34,24 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
     setLoading(true);
     setError(null);
 
-    try {
-      const result = await authService.signUp({
-        email: formData.email,
-        password: formData.password,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        acceptedTerms: formData.acceptedTerms,
-        acceptMarketing: formData.acceptMarketing
-      });
-
-      if (result.error) {
-        throw result.error;
-      }
-
-      onSuccess();
-    } catch (error: any) {
-      console.error('Sign up error:', error);
-      setError(error.message || 'Failed to create account');
-    } finally {
+    const result = await authService.signUp({
+      email: formData.email,
+      password: formData.password,
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      acceptedTerms: formData.acceptedTerms,
+      acceptMarketing: formData.acceptMarketing
+    });
+    
+    if (result.error) {
+      setError(result.error.message);
       setLoading(false);
+    } else {
+      onSuccess();
     }
   };
 
+  // Optimized animation variants
   const formVariants = {
     hidden: { 
       opacity: 0,
@@ -163,6 +158,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
         </div>
       </div>
 
+      {/* Terms and Marketing Checkboxes */}
       <div className="space-y-3">
         <label className="flex items-start space-x-3 cursor-pointer">
           <input

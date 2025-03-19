@@ -8,10 +8,9 @@ import { useMobileDetection } from '../MobileDetection';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const isMobile = useMobileDetection();
 
@@ -46,11 +45,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
         ease: "easeIn"
       }
     }
-  };
-
-  const handleSuccess = () => {
-    onSuccess?.();
-    onClose();
   };
 
   return (
@@ -97,13 +91,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                   {mode === 'signin' ? (
                     <SignInForm
                       key="signin"
-                      onSuccess={handleSuccess}
+                      onSuccess={onClose}
                       onSwitchMode={() => setMode('signup')}
                     />
                   ) : (
                     <SignUpForm
                       key="signup"
-                      onSuccess={handleSuccess}
+                      onSuccess={onClose}
                       onSwitchMode={() => setMode('signin')}
                     />
                   )}

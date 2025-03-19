@@ -1,5 +1,5 @@
 import { callNetlifyFunction } from '../lib/supabase';
-import type { SignUpData, SignInData, OrderLinkData } from '../types/auth';
+import type { SignUpData, SignInData } from '../types/auth';
 import type { Result } from '../types/database';
 import { useAuthStore } from '../store/authStore';
 
@@ -10,18 +10,15 @@ export const authService = {
         throw new Error('Terms must be accepted to create an account');
       }
 
-      const result = await callNetlifyFunction('supabase-client', {
-        action: 'signUp',
-        payload: {
-          email,
-          password,
-          options: {
-            data: {
-              first_name,
-              last_name,
-              acceptedTerms,
-              acceptMarketing
-            }
+      const result = await callNetlifyFunction('signUp', {
+        email,
+        password,
+        options: {
+          data: {
+            first_name,
+            last_name,
+            acceptedTerms,
+            acceptMarketing
           }
         }
       });
@@ -47,12 +44,9 @@ export const authService = {
 
   async signIn({ email, password }: SignInData): Promise<Result<void>> {
     try {
-      const result = await callNetlifyFunction('supabase-client', {
-        action: 'signIn',
-        payload: {
-          email,
-          password
-        }
+      const result = await callNetlifyFunction('signIn', {
+        email,
+        password
       });
 
       if (result.error) throw result.error;
@@ -76,10 +70,7 @@ export const authService = {
 
   async signOut(): Promise<Result<void>> {
     try {
-      const result = await callNetlifyFunction('supabase-client', {
-        action: 'signOut'
-      });
-      
+      const result = await callNetlifyFunction('signOut');
       if (result.error) throw result.error;
       
       // Clear user from auth store immediately

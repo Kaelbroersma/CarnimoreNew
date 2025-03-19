@@ -1,5 +1,5 @@
-import { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
+import { Handler } from '@netlify/functions';
 
 // Validate environment variables
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -115,40 +115,22 @@ export const handler: Handler = async (event) => {
         }
 
       case 'signIn':
-        try {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: payload.email,
-            password: payload.password
-          });
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword(payload);
+        if (signInError) throw signInError;
 
-          if (signInError) throw signInError;
-
-          // Update last_login in users table
-          if (signInData.user) {
-            await supabase
-              .from('users')
-              .update({ last_login: new Date().toISOString() })
-              .eq('user_id', signInData.user.id);
-          }
-
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ data: signInData })
-          };
-        } catch (error: any) {
-          console.error('Error in signin process:', error);
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ 
-              error: { 
-                message: error.message || 'Failed to sign in',
-                details: error.details || error.message
-              }
-            })
-          };
+        // Update last_login in users table
+        if (signInData.user) {
+          await supabase
+            .from('users')
+            .update({ last_login: new Date().toISOString() })
+            .eq('user_id', signInData.user.id);
         }
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ data: signInData })
+        };
 
       case 'signOut':
         const { error: signOutError } = await supabase.auth.signOut();
@@ -326,7 +308,7 @@ export const handler: Handler = async (event) => {
         });
 
         // Use upsert operation
-        const { error: updateCartError } = await supabase
+        const { error: updateError } = await supabase
           .from('shopping_cart')
           .upsert(
           {
@@ -339,9 +321,9 @@ export const handler: Handler = async (event) => {
             ignoreDuplicates: false
           });
 
-        if (updateCartError) {
-          console.error('Failed to update cart:', updateCartError);
-          throw updateCartError;
+        if (updateError) {
+          console.error('Failed to update cart:', updateError);
+          throw updateError;
         }
 
         console.log('Cart updated successfully');

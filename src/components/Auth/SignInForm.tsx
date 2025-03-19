@@ -24,25 +24,17 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode }) => {
     setLoading(true);
     setError(null);
 
-    try {
-      const result = await authService.signIn({
-        email: formData.email,
-        password: formData.password
-      });
-
-      if (result.error) {
-        throw result.error;
-      }
-
-      onSuccess();
-    } catch (error: any) {
-      console.error('Sign in error:', error);
-      setError(error.message || 'Failed to sign in');
-    } finally {
+    const result = await authService.signIn(formData);
+    
+    if (result.error) {
+      setError(result.error.message);
       setLoading(false);
+    } else {
+      onSuccess();
     }
   };
 
+  // Optimized animation variants
   const formVariants = {
     hidden: { 
       opacity: 0,
