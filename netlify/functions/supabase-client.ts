@@ -419,56 +419,6 @@ export const handler: Handler = async (event) => {
           body: JSON.stringify({ data: order })
         };
 
-      case 'getOrders':
-        if (!payload.userId) {
-          throw new Error('Missing user ID');
-        }
-
-        const { data: orders, error: ordersError } = await supabase
-          .from('orders')
-          .select(`
-            order_id,
-            order_date,
-            total_amount,
-            payment_status,
-            order_status,
-            shipping_address,
-            shipping_method,
-            tracking_number,
-            payment_method,
-            order_items
-          `)
-          .eq('user_id', payload.userId)
-          .order('order_date', { ascending: false });
-
-        if (ordersError) {
-          throw ordersError;
-        }
-
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ data: orders })
-        };
-
-      case 'updateOrder':
-        if (!payload.orderId || !payload.userId) {
-          throw new Error('Missing orderId or userId');
-        }
-
-        const { error: updateError } = await supabase
-          .from('orders')
-          .update({ user_id: payload.userId })
-          .eq('order_id', payload.orderId);
-
-        if (updateError) throw updateError;
-
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ success: true })
-        };
-
       default:
         return {
           statusCode: 400,
