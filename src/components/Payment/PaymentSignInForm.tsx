@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 import { authService } from '../../services/authService';
+import { orderService } from '../../services/orderService';
 import { useAuthStore } from '../../store/authStore';
 import Button from '../Button';
 import { useMobileDetection } from '../MobileDetection';
@@ -44,10 +45,17 @@ const PaymentSignInForm: React.FC<PaymentSignInFormProps> = ({
       // Link the order to the user
       const user = useAuthStore.getState().user;
       if (user) {
-        const linkResult = await authService.linkOrderToUser({
+        console.log('Attempting to link order:', {
+          timestamp: new Date().toISOString(),
           orderId,
           userId: user.id
         });
+
+        const linkResult = await orderService.linkOrderToUser({
+          orderId,
+          userId: user.id
+        });
+
         if (linkResult.error) {
           throw linkResult.error;
         }
@@ -55,7 +63,10 @@ const PaymentSignInForm: React.FC<PaymentSignInFormProps> = ({
 
       onSuccess();
     } catch (error: any) {
-      console.error('Payment sign in error:', error);
+      console.error('Payment sign in error:', {
+        timestamp: new Date().toISOString(),
+        error: error.message
+      });
       setError(error.message || 'Failed to sign in');
     } finally {
       setLoading(false);

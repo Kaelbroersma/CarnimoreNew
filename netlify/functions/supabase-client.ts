@@ -18,6 +18,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   }
 });
 
+// UUID validation regex
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export const handler: Handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -156,18 +159,51 @@ export const handler: Handler = async (event) => {
             throw new Error('Missing required fields: orderId and userId');
           }
 
-          console.log('Updating order:', {
+          // Validate UUID format
+          if (!uuidRegex.test(payload.orderId)) {
+            throw new Error('Invalid order ID format');
+          }
+          
+          if (!uuidRegex.test(payload.userId)) {
+            throw new Error('Invalid user ID format');
+          }
+
+          console.log('Attempting to update order:', {
             timestamp: new Date().toISOString(),
             orderId: payload.orderId,
             userId: payload.userId
           });
 
-          // Update the order with the user ID
-          const { error: updateError } = await supabase
+          // First check if order exists and is unassigned
+          const { data: existingOrder, error: checkError } = await supabase
             .from('orders')
-            .update({ user_id: payload.userId })
+            .select('order_id, user_id')
             .eq('order_id', payload.orderId)
-            .is('user_id', null); // Only update if user_id is null
+            .single();
+
+          if (checkError) {
+            console.error('Error checking order:', checkError);
+            throw new Error('Failed to find order');
+          }
+
+          if (!existingOrder) {
+            throw new Error('Order not found');
+          }
+
+          if (existingOrder.user_id) {
+            throw new Error('Order is already assigned to a user');
+          }
+
+          // Update the order with the user ID
+          const { data: updatedOrder, error: updateError } = await supabase
+            .from('orders')
+            .update({ 
+              user_id: payload.userId,
+              updated_at: new Date().toISOString()
+            })
+            .eq('order_id', payload.orderId)
+            .select()
+            .single();
 
           if (updateError) {
             console.error('Failed to update order:', {
@@ -179,18 +215,32 @@ export const handler: Handler = async (event) => {
             throw updateError;
           }
 
+          console.log('Order successfully updated:', {
+            timestamp: new Date().toISOString(),
+            orderId: payload.orderId,
+            userId: payload.userId,
+            order: updatedOrder
+          });
+
           return {
             statusCode: 200,
             headers,
             body: JSON.stringify({ 
               success: true,
-              message: 'Order successfully linked to user account'
+              message: 'Order successfully linked to user account',
+              data: updatedOrder
             })
           };
         } catch (error: any) {
-          console.error('Error updating order:', error);
+          console.error('Error updating order:', {
+            timestamp: new Date().toISOString(),
+            error: error.message,
+            orderId: payload.orderId,
+            userId: payload.userId
+          });
+          
           return {
-            statusCode: 500,
+            statusCode: 400,
             headers,
             body: JSON.stringify({ 
               error: { 
