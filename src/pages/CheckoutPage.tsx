@@ -167,6 +167,8 @@ const CheckoutPage: React.FC = () => {
         expiryYear: formData.expiryYear,
         cvv: formData.cvv,
         amount: total,
+        email: formData.email,
+        phone: formData.phone,
         shippingAddress: {
           address: formData.address,
           city: formData.city,
@@ -312,8 +314,21 @@ const CheckoutPage: React.FC = () => {
                         <input
                           type="email"
                           required
-                          value={billingInfo.email}
-                          onChange={(e) => setBillingInfo(prev => ({ ...prev, email: e.target.value }))}
+                          value={formData.email}
+                          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                          className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Phone Number <span className="text-tan">*</span>
+                        </label>
+                        <input
+                          type="tel"
+                          required
+                          value={formData.phone}
+                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                           className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
                         />
                       </div>
@@ -373,19 +388,6 @@ const CheckoutPage: React.FC = () => {
                             className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
                           />
                         </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">
-                          Phone Number <span className="text-tan">*</span>
-                        </label>
-                        <input
-                          type="tel"
-                          required
-                          value={formData.phone}
-                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                          className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
-                        />
                       </div>
 
                       <div className="flex justify-end">

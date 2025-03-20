@@ -9,6 +9,7 @@ interface UseOrderPollingProps {
 }
 
 export const useOrderPolling = ({ orderId, onStatusChange }: UseOrderPollingProps) => {
+  
   const navigate = useNavigate();
   const clearCart = useCartStore(state => state.clearCart);
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
@@ -28,6 +29,15 @@ export const useOrderPolling = ({ orderId, onStatusChange }: UseOrderPollingProp
         const result = await callNetlifyFunction('getOrder', { orderId });
         
         if (!isSubscribed) return;
+
+        // Handle case where order doesn't exist yet
+        if (result.error?.code === 'PGRST116') {
+          console.log('Order not found yet, continuing to poll:', {
+            timestamp: new Date().toISOString(),
+            orderId
+          });
+          return;
+        }
 
         if (result.error) {
           throw new Error(result.error.message);

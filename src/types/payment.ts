@@ -14,6 +14,8 @@ export interface PaymentData {
   shippingAddress: Address;
   billingAddress?: Address | null;
   orderId: string;
+  email: string;
+  phone: string;
   items: Array<{
     id: string;
     quantity: number;
