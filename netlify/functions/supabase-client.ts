@@ -174,6 +174,30 @@ export const handler: Handler = async (event) => {
             userId: payload.userId
           });
 
+          // First check if order exists
+          const { data: existingOrder, error: checkError } = await supabase
+            .from('orders')
+            .select('order_id, user_id')
+            .eq('order_id', payload.orderId)
+            .single();
+
+          if (checkError) {
+            console.error('Error checking order existence:', {
+              timestamp: new Date().toISOString(),
+              error: checkError,
+              orderId: payload.orderId
+            });
+            throw checkError;
+          }
+
+          if (!existingOrder) {
+            console.error('Order not found:', {
+              timestamp: new Date().toISOString(),
+              orderId: payload.orderId
+            });
+            throw new Error('Order not found');
+          }
+
           // Update the order with the user ID
           const { data: updatedOrder, error: updateError } = await supabase
             .from('orders')
@@ -190,7 +214,6 @@ export const handler: Handler = async (event) => {
             });
             throw updateError;
           }
-
 
           // Check if rows were found or updated
           if (!updatedOrder || updatedOrder.length === 0) {
