@@ -179,8 +179,7 @@ export const handler: Handler = async (event) => {
             .from('orders')
             .update({ user_id: payload.userId })
             .eq('order_id', payload.orderId)
-            .select()
-            .single();
+            .select();
 
           if (updateError) {
             console.error('Failed to update order:', {
@@ -190,6 +189,17 @@ export const handler: Handler = async (event) => {
               userId: payload.userId
             });
             throw updateError;
+          }
+
+
+          // Check if rows were found or updated
+          if (!updatedOrder || updatedOrder.length === 0) {
+            console.error('No rows were updated:', {
+              timestamp: new Date().toISOString(),
+              orderId: payload.orderId,
+              userId: payload.userId
+            });
+            throw new Error('Order not found or could not be updated');
           }
 
           console.log('Order successfully updated:', {
