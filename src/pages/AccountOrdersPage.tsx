@@ -45,23 +45,31 @@ const AccountOrdersPage: React.FC = () => {
           userId: user.id
         });
 
-        const result = await callNetlifyFunction('supabase-client', {
-          action: 'getOrders',
-          payload: { userId: user.id }
+        const result = await callNetlifyFunction('getOrders', {
+          userId: user.id
         });
 
         if (result.error) {
-          throw new Error(result.error.message);
+          console.error('Error response from server:', {
+            timestamp: new Date().toISOString(),
+            error: result.error
+          });
+          throw new Error(result.error.message || 'Failed to fetch orders');
         }
 
         console.log('Orders fetched successfully:', {
           timestamp: new Date().toISOString(),
-          orderCount: result.data?.length || 0
+          orderCount: result.data?.length || 0,
+          orders: result.data
         });
 
         setOrders(result.data || []);
       } catch (error: any) {
-        console.error('Error fetching orders:', error);
+        console.error('Error fetching orders:', {
+          timestamp: new Date().toISOString(),
+          error: error.message,
+          stack: error.stack
+        });
         setError(error.message);
       } finally {
         setLoading(false);
