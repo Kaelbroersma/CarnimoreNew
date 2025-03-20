@@ -174,32 +174,10 @@ export const handler: Handler = async (event) => {
             userId: payload.userId
           });
 
-          // First check if order exists and is unassigned
-          const { data: existingOrder, error: checkError } = await supabase
-            .from('orders')
-            .select('order_id, user_id')
-            .eq('order_id', payload.orderId)
-            .single();
-
-          if (checkError) {
-            console.error('Error checking order:', checkError);
-            throw new Error('Failed to find order');
-          }
-
-          if (!existingOrder) {
-            throw new Error('Order not found');
-          }
-
-          if (existingOrder.user_id) {
-            throw new Error('Order is already assigned to a user');
-          }
-
           // Update the order with the user ID
           const { data: updatedOrder, error: updateError } = await supabase
             .from('orders')
-            .update({ 
-              user_id: payload.userId,
-            })
+            .update({ user_id: payload.userId })
             .eq('order_id', payload.orderId)
             .select()
             .single();

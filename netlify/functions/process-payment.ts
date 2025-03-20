@@ -35,7 +35,9 @@ export const handler: Handler = async (event) => {
       amount, 
       shippingAddress,
       billingAddress,
-      items
+      items,
+      email,
+      phone
     } = paymentData;
 
     // Get user ID from auth context if available
@@ -64,7 +66,8 @@ export const handler: Handler = async (event) => {
     // Validate required fields
     if (!cardNumber?.trim() || !expiryMonth?.trim() || !expiryYear?.trim() || 
         !cvv?.trim() || !amount || !orderId || 
-        !shippingAddress?.address?.trim() || !shippingAddress?.zipCode?.trim()) {
+        !shippingAddress?.address?.trim() || !shippingAddress?.zipCode?.trim() ||
+        !email?.trim() || !phone?.trim()) {
       throw new Error('Missing required fields');
     }
 
@@ -102,7 +105,9 @@ export const handler: Handler = async (event) => {
         shipping_method: 'standard',
         order_status: 'pending',
         created_at: new Date().toISOString(),
-        order_items: formattedOrderItems // Store formatted order items
+        order_items: formattedOrderItems,
+        phone_number: phone,
+        email: email
       })
       .select()
       .single();
