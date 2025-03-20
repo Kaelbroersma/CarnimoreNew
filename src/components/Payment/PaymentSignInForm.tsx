@@ -32,6 +32,12 @@ const PaymentSignInForm: React.FC<PaymentSignInFormProps> = ({
     setError(null);
 
     try {
+      console.log('Starting sign in process:', {
+        timestamp: new Date().toISOString(),
+        email: formData.email,
+        orderId
+      });
+
       // Sign in the user
       const signInResult = await authService.signIn({
         email: formData.email,
@@ -42,24 +48,39 @@ const PaymentSignInForm: React.FC<PaymentSignInFormProps> = ({
         throw signInResult.error;
       }
 
-      // Link the order to the user
+      // Get the user from auth store
       const user = useAuthStore.getState().user;
-      if (user) {
-        console.log('Attempting to link order:', {
-          timestamp: new Date().toISOString(),
-          orderId,
-          userId: user.id
-        });
-
-        const linkResult = await orderService.linkOrderToUser({
-          orderId,
-          userId: user.id
-        });
-
-        if (linkResult.error) {
-          throw linkResult.error;
-        }
+      if (!user) {
+        throw new Error('Failed to get user after sign in');
       }
+
+      console.log('User signed in successfully, linking order:', {
+        timestamp: new Date().toISOString(),
+        userId: user.id,
+        orderId
+      });
+
+      // Link the order to the user
+      const linkResult = await orderService.linkOrderToUser({
+        orderId,
+        userId: user.id
+      });
+
+      if (linkResult.error) {
+        console.error('Failed to link order:', {
+          timestamp: new Date().toISOString(),
+          error: linkResult.error,
+          orderId,
+          userId: user.id
+        });
+        throw linkResult.error;
+      }
+
+      console.log('Order linked successfully:', {
+        timestamp: new Date().toISOString(),
+        orderId,
+        userId: user.id
+      });
 
       onSuccess();
     } catch (error: any) {

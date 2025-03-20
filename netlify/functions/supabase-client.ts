@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { Handler } from '@netlify/functions';
+import { createClient } from '@supabase/supabase-js';
 
 // Validate environment variables
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -262,19 +262,19 @@ export const handler: Handler = async (event) => {
             userId: payload.userId
           });
 
-          // Fetch orders with order items for the specified user
+          // Fetch orders for the specified user
           const { data: orders, error: ordersError } = await supabase
             .from('orders')
             .select(`
-              *,
-              order_items (
-                product_id,
-                name,
-                quantity,
-                price,
-                total,
-                options
-              )
+              order_id,
+              order_status,
+              payment_status,
+              total_amount,
+              shipping_address,
+              order_date,
+              payment_method,
+              tracking_number,
+              order_items
             `)
             .eq('user_id', payload.userId)
             .order('order_date', { ascending: false });

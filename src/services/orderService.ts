@@ -26,9 +26,9 @@ export const orderService = {
         userId
       });
 
-      const result = await callNetlifyFunction('supabase-client', {
-        action: 'updateOrder',
-        payload: { orderId, userId }
+      const result = await callNetlifyFunction('updateOrder', {
+        orderId,
+        userId
       });
 
       if (result.error) {
