@@ -199,7 +199,6 @@ export const handler: Handler = async (event) => {
             .from('orders')
             .update({ 
               user_id: payload.userId,
-              updated_at: new Date().toISOString()
             })
             .eq('order_id', payload.orderId)
             .select()
