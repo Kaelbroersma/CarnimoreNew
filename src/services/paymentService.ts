@@ -60,7 +60,9 @@ export const paymentService = {
         shippingAddress: data.shippingAddress,
         billingAddress: data.billingAddress,
         orderId: data.orderId,
-        items: data.items
+        items: data.items,
+        phone: data.phone,
+        email: data.email
       };
 
       // Add authorization header if user is logged in
