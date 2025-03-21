@@ -90,7 +90,7 @@ function App() {
                 <Route path="/shop/optics" element={<OpticsPage />} />
                 <Route path="/shop/accessories" element={<AccessoriesPage />} />
                 <Route path="/shop/nfa" element={<NFAPage />} />
-                <Route path="/shop/barreled-action" element={<BarreledActionPage />} />
+                <Route path="/shop/barreled-actions" element={<BarreledActionPage />} />
                 
                 {/* Unified product details route */}
                 <Route path="/shop/:categorySlug/:productSlug" element={<ProductDetailsPage />} />

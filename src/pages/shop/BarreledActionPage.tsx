@@ -8,7 +8,7 @@ const BarreledActionPage: React.FC = () => {
   const { products, loading, error, fetchProducts, clearProducts } = useProductStore();
 
   const handleProductClick = (productSlug: string) => {
-    navigate(`/shop/barreled-action/${productSlug}`);
+    navigate(`/shop/barreled-actions/${productSlug}`);
   };
 
   return (

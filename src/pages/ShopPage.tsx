@@ -1,64 +1,24 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Sun as Gun, SprayCan, Crosshair, ShoppingBag, Package } from 'lucide-react';
+import * as Icons from 'lucide-react';
+import { useProductStore } from '../store/productStore';
 import { useMobileDetection } from '../components/MobileDetection';
-
-interface Collection {
-  id: string;
-  name: string;
-  description: string;
-  image: string;
-  icon: React.ReactNode;
-  path: string;
-}
 
 const ShopPage: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useMobileDetection();
+  const { categories, loading, error, fetchCategories } = useProductStore();
 
-  const collections: Collection[] = [
-    {
-      id: 'carnimore-models',
-      name: 'Carnimore Models',
-      description: 'Premium custom rifles crafted with precision and excellence',
-      image: '/img/gallery/DSC_0331.jpg',
-      icon: <Gun className="text-tan" size={24} />,
-      path: '/shop/carnimore-models'
-    },
-    {
-      id: 'duracoat',
-      name: 'Duracoat Services',
-      description: 'Professional firearm coating with unmatched durability',
-      image: '/img/gallery/DSC_0340.jpg',
-      icon: <SprayCan className="text-tan" size={24} />,
-      path: '/shop/duracoat'
-    },
-    {
-      id: 'optics',
-      name: 'Optics',
-      description: 'High-quality scopes and sighting solutions',
-      image: '/img/gallery/DSC_0382.jpg',
-      icon: <Crosshair className="text-tan" size={24} />,
-      path: '/shop/optics'
-    },
-    {
-      id: 'merch',
-      name: 'Merchandise',
-      description: 'Premium apparel and accessories',
-      image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
-      icon: <ShoppingBag className="text-tan" size={24} />,
-      path: '/shop/merch'
-    },
-    {
-      id: 'accessories',
-      name: 'Accessories',
-      description: 'Essential firearm accessories and components',
-      image: '/img/gallery/DSC_0319.jpg',
-      icon: <Package className="text-tan" size={24} />,
-      path: '/shop/accessories'
-    }
-  ];
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // Dynamic icon component lookup
+  const getIconComponent = (iconName: string) => {
+    const Icon = (Icons as any)[iconName];
+    return Icon ? <Icon className="text-tan" size={24} /> : null;
+  };
 
   return (
     <div className="pt-24 pb-16">
@@ -89,42 +49,58 @@ const ShopPage: React.FC = () => {
           </motion.p>
         </div>
 
-        {/* Collections Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {collections.map((collection, index) => (
-            <motion.div
-              key={collection.id}
-              className="bg-gunmetal rounded-sm shadow-luxury overflow-hidden cursor-pointer group"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              onClick={() => navigate(collection.path)}
-            >
-              {/* Collection Image */}
-              <div className="relative aspect-w-16 aspect-h-9 overflow-hidden">
-                <img
-                  src={collection.image}
-                  alt={collection.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300" />
-              </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-tan"></div>
+          </div>
+        )}
 
-              {/* Collection Info */}
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-heading text-xl font-bold group-hover:text-tan transition-colors">
-                    {collection.name}
-                  </h2>
-                  {collection.icon}
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-900/30 border border-red-700 rounded-sm p-4 mb-8">
+            <p className="text-red-400">{error}</p>
+          </div>
+        )}
+
+        {/* Categories Grid */}
+        {!loading && !error && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {categories.map((category, index) => (
+              <motion.div
+                key={category.category_id}
+                className="bg-gunmetal rounded-sm shadow-luxury overflow-hidden cursor-pointer group"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                onClick={() => navigate(`/shop/${category.slug}`)}
+              >
+                {/* Category Image */}
+                <div className="relative aspect-w-16 aspect-h-9 overflow-hidden">
+                  <img
+                    src={category.category_img}
+                    alt={category.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300" />
                 </div>
-                <p className="text-gray-400">
-                  {collection.description}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+
+                {/* Category Info */}
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-heading text-xl font-bold group-hover:text-tan transition-colors">
+                      {category.name}
+                    </h2>
+                    {category.icon && getIconComponent(category.icon)}
+                  </div>
+                  <p className="text-gray-400">
+                    {category.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
