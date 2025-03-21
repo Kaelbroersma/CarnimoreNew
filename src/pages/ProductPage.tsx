@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { AlertCircle, Loader } from 'lucide-react';
 import { useMobileDetection } from '../components/MobileDetection';
 import { getImageUrl } from '../utils/imageUtils';
+import Breadcrumbs from '../components/Breadcrumbs';
 
 interface ProductPageProps {
   title: string;
@@ -54,7 +55,22 @@ const ProductPage: React.FC<ProductPageProps> = ({
         />
         
         {/* Content */}
-        <div className="container mx-auto px-4 relative z-10 text-center">
+        <div className="container mx-auto px-4 relative z-10">
+          {/* Breadcrumbs */}
+          <motion.div
+            className="mb-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <Breadcrumbs
+              items={[
+                { label: 'Shop', href: '/shop' },
+                { label: title }
+              ]}
+            />
+          </motion.div>
+
           <motion.h1 
             className="font-heading text-4xl md:text-6xl font-bold mb-6"
             initial={{ opacity: 0, y: 20 }}

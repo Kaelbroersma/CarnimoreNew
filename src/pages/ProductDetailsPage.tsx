@@ -3,8 +3,6 @@ import { motion } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronLeft, ChevronRight, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useProductStore } from '../store/productStore';
-import { useDuracoatStore } from '../store/duracoatStore';
-import { useMerchStore } from '../store/merchStore';
 import { useCartStore } from '../store/cartStore';
 import { useMobileDetection } from '../components/MobileDetection';
 import { getImageUrl } from '../utils/imageUtils';
@@ -17,46 +15,20 @@ const ProductDetailsPage: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useMobileDetection();
   
-  // Store states based on category
   const {
-    selectedProduct: carnimoreProduct,
+    selectedProduct: product,
     selectedCaliber,
-    selectedOptions: carnimoreOptions,
-    colors: carnimoreColors,
-    loading: carnimoreLoading,
-    error: carnimoreError,
-    fetchProduct: fetchCarnimoreProduct,
+    selectedOptions,
+    colors,
+    loading,
+    error,
+    fetchProduct,
     setSelectedCaliber,
     setSelectedOption,
-    setColors: setCarnimoreColors,
-    calculateTotalPrice: calculateCarnimorePrice,
-    clearSelections: clearCarnimoreSelections
+    setColors,
+    calculateTotalPrice,
+    clearSelections
   } = useProductStore();
-
-  const {
-    selectedService: duracoatProduct,
-    colors: duracoatColors,
-    isDirty,
-    loading: duracoatLoading,
-    error: duracoatError,
-    fetchService: fetchDuracoatProduct,
-    setColors: setDuracoatColors,
-    setIsDirty,
-    calculateTotal: calculateDuracoatPrice,
-    clearSelections: clearDuracoatSelections
-  } = useDuracoatStore();
-
-  const {
-    selectedProduct: merchProduct,
-    selectedSize,
-    selectedColor,
-    loading: merchLoading,
-    error: merchError,
-    fetchProduct: fetchMerchProduct,
-    setSelectedSize,
-    setSelectedColor,
-    clearSelections: clearMerchSelections
-  } = useMerchStore();
 
   const { addItem } = useCartStore();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -64,39 +36,14 @@ const ProductDetailsPage: React.FC = () => {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [showSpecs, setShowSpecs] = useState(false);
 
-  // Get the appropriate product based on category
-  const product = categorySlug === 'carnimore-models' ? carnimoreProduct :
-                 categorySlug === 'duracoat' ? duracoatProduct :
-                 categorySlug === 'merch' ? merchProduct : null;
-
-  const loading = categorySlug === 'carnimore-models' ? carnimoreLoading :
-                 categorySlug === 'duracoat' ? duracoatLoading :
-                 categorySlug === 'merch' ? merchLoading : false;
-
-  const error = categorySlug === 'carnimore-models' ? carnimoreError :
-                categorySlug === 'duracoat' ? duracoatError :
-                categorySlug === 'merch' ? merchError : null;
-
   useEffect(() => {
     if (!categorySlug || !productSlug) return;
 
     // Clear any existing selections
-    clearCarnimoreSelections();
-    clearDuracoatSelections();
-    clearMerchSelections();
+    clearSelections();
 
-    // Fetch product based on category
-    switch (categorySlug) {
-      case 'carnimore-models':
-        fetchCarnimoreProduct(productSlug);
-        break;
-      case 'duracoat':
-        fetchDuracoatProduct(productSlug);
-        break;
-      case 'merch':
-        fetchMerchProduct(productSlug);
-        break;
-    }
+    // Fetch product
+    fetchProduct(productSlug);
   }, [categorySlug, productSlug]);
 
   const handleBack = () => {
@@ -109,49 +56,56 @@ const ProductDetailsPage: React.FC = () => {
 
     setIsAddingToCart(true);
     try {
+      const baseItem = {
+        id: product.product_id,
+        name: product.name,
+        quantity: 1,
+        image: product.images?.[0]?.image_url || '/img/Logo-Main.webp'
+      };
+
       switch (categorySlug) {
         case 'carnimore-models':
+        case 'barreled-action':
           if (!selectedCaliber) return;
           await addItem({
-            id: product.product_id,
-            name: product.name,
-            price: calculateCarnimorePrice(),
-            quantity: 1,
-            image: product.images?.[0]?.image_url || '/img/Logo-Main.webp',
+            ...baseItem,
+            price: calculateTotalPrice(),
             options: {
               caliber: selectedCaliber,
-              colors: carnimoreColors,
-              ...carnimoreOptions
+              colors,
+              ...selectedOptions
             }
           });
           break;
 
         case 'duracoat':
           await addItem({
-            id: product.product_id,
-            name: product.name,
-            price: calculateDuracoatPrice(),
-            quantity: 1,
-            image: product.images?.[0]?.image_url || '/img/Logo-Main.webp',
+            ...baseItem,
+            price: calculateTotalPrice(),
             options: {
-              colors: duracoatColors,
-              isDirty
+              colors,
+              isDirty: selectedOptions.isDirty
             }
           });
           break;
 
         case 'merch':
-          if (!selectedSize || !selectedColor) return;
+          if (!selectedOptions.size || !selectedOptions.color) return;
           await addItem({
-            id: product.product_id,
-            name: product.name,
+            ...baseItem,
             price: product.price,
-            quantity: 1,
-            image: product.images?.[0]?.image_url || '/img/Logo-Main.webp',
             options: {
-              size: selectedSize,
-              color: selectedColor
+              size: selectedOptions.size,
+              color: selectedOptions.color
             }
+          });
+          break;
+
+        default:
+          // Simple products (optics, accessories, nfa)
+          await addItem({
+            ...baseItem,
+            price: product.price
           });
           break;
       }
@@ -170,6 +124,19 @@ const ProductDetailsPage: React.FC = () => {
     ) : null;
 
   if (!product || loading) return null;
+
+  const needsCaliberSelection = ['carnimore-models', 'barreled-action'].includes(categorySlug || '');
+  const needsSizeColorSelection = categorySlug === 'merch';
+  const isDisabled = isAddingToCart || 
+    (needsCaliberSelection && !selectedCaliber) ||
+    (needsSizeColorSelection && (!selectedOptions.size || !selectedOptions.color));
+
+  const getButtonText = () => {
+    if (isAddingToCart) return 'Adding to Cart...';
+    if (needsCaliberSelection && !selectedCaliber) return 'Select Caliber to Continue';
+    if (needsSizeColorSelection && (!selectedOptions.size || !selectedOptions.color)) return 'Select Size and Color to Continue';
+    return 'Add to Cart';
+  };
 
   return (
     <div className="pt-24 pb-16">
@@ -191,6 +158,14 @@ const ProductDetailsPage: React.FC = () => {
                 ? 'Carnimore Models'
                 : categorySlug === 'duracoat'
                 ? 'Duracoat Services'
+                : categorySlug === 'optics'
+                ? 'Optics'
+                : categorySlug === 'accessories'
+                ? 'Accessories'
+                : categorySlug === 'nfa'
+                ? 'NFA Items'
+                : categorySlug === 'barreled-action'
+                ? 'Barreled Actions'
                 : 'Merchandise',
               href: `/shop/${categorySlug}`
             },
@@ -313,19 +288,19 @@ const ProductDetailsPage: React.FC = () => {
               categorySlug={categorySlug}
               product={product}
               selectedCaliber={selectedCaliber}
-              carnimoreOptions={carnimoreOptions}
-              carnimoreColors={carnimoreColors}
-              duracoatColors={duracoatColors}
-              isDirty={isDirty}
-              selectedSize={selectedSize}
-              selectedColor={selectedColor}
+              carnimoreOptions={selectedOptions}
+              carnimoreColors={colors}
+              duracoatColors={colors}
+              isDirty={selectedOptions.isDirty}
+              selectedSize={selectedOptions.size}
+              selectedColor={selectedOptions.color}
               onCaliberSelect={setSelectedCaliber}
               onOptionChange={setSelectedOption}
-              onCarnimoreColorsChange={setCarnimoreColors}
-              onDuracoatColorsChange={setDuracoatColors}
-              onDirtyChange={setIsDirty}
-              onSizeSelect={setSelectedSize}
-              onColorSelect={setSelectedColor}
+              onCarnimoreColorsChange={setColors}
+              onDuracoatColorsChange={setColors}
+              onDirtyChange={(isDirty) => setSelectedOption('isDirty', isDirty)}
+              onSizeSelect={(size) => setSelectedOption('size', size)}
+              onColorSelect={(color) => setSelectedOption('color', color)}
             />
 
             {/* Add to Cart Button */}
@@ -333,21 +308,10 @@ const ProductDetailsPage: React.FC = () => {
               <Button
                 variant="primary"
                 fullWidth
-                disabled={
-                  isAddingToCart ||
-                  (categorySlug === 'carnimore-models' && !selectedCaliber) ||
-                  (categorySlug === 'merch' && (!selectedSize || !selectedColor))
-                }
+                disabled={isDisabled}
                 onClick={handleAddToCart}
               >
-                {isAddingToCart
-                  ? 'Adding to Cart...'
-                  : categorySlug === 'carnimore-models' && !selectedCaliber
-                  ? 'Select Caliber to Continue'
-                  : categorySlug === 'merch' && (!selectedSize || !selectedColor)
-                  ? 'Select Size and Color to Continue'
-                  : 'Add to Cart'
-                }
+                {getButtonText()}
               </Button>
             </div>
           </motion.div>

@@ -34,10 +34,8 @@ const Footer: React.FC = () => {
         { label: 'Carnimore Models', link: '/shop/carnimore-models' },
         { label: 'NFA Items', link: '/shop/nfa' },
         { label: 'Barreled Actions', link: '/shop/barreled-action' },
-        { label: 'Custom Duracoat', link: '/shop/duracoat' },
         { label: 'Optics', link: '/shop/optics' },
-        { label: 'Accessories', link: '/shop/accessories' },
-        { label: 'Merchandise', link: '/shop/merch' }
+        { label: 'Accessories', link: '/shop/accessories' }
       ]
     }
   ];
