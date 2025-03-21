@@ -48,6 +48,18 @@ async function callNetlifyFunction(action: string, payload?: any) {
     if (text) {
       try {
         const data = JSON.parse(text);
+        
+        // Special handling for category not found
+        if (action === 'getProducts' && data.error?.code === 'PGRST116') {
+          return {
+            data: [],
+            error: {
+              message: `No products found for category: ${payload?.categorySlug}`,
+              details: 'Category exists but has no products'
+            }
+          };
+        }
+        
         return data;
       } catch (e) {
         console.error('Failed to parse JSON response:', {
