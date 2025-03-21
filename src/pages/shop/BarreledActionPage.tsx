@@ -3,19 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { useProductStore } from '../../store/productStore';
 import ProductPage from '../ProductPage';
 
-const BarreledActionPage: React.FC = () => {
+const BarreledActionsPage: React.FC = () => { // Updated component name
   const navigate = useNavigate();
   const { products, loading, error, fetchProducts, clearProducts } = useProductStore();
 
   const handleProductClick = (productSlug: string) => {
-    navigate(`/shop/barreled-actions/${productSlug}`);
+    navigate(`/shop/barreled-actions/${productSlug}`); // Fixed slug
   };
 
   return (
     <ProductPage
       title="Barreled Actions"
       description="Premium custom barreled actions for precision rifle builds"
-      categorySlug="barreled-action"
+      categorySlug="barreled-actions" // Fixed slug
       products={products}
       loading={loading}
       error={error}
@@ -26,4 +26,4 @@ const BarreledActionPage: React.FC = () => {
   );
 };
 
-export default BarreledActionPage;
+export default BarreledActionsPage; // Updated component name
