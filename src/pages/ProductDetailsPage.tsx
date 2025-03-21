@@ -65,7 +65,7 @@ const ProductDetailsPage: React.FC = () => {
 
       switch (categorySlug) {
         case 'carnimore-models':
-        case 'barreled-action':
+        case 'barreled-actions':
           if (!selectedCaliber) return;
           await addItem({
             ...baseItem,
@@ -125,7 +125,7 @@ const ProductDetailsPage: React.FC = () => {
 
   if (!product || loading) return null;
 
-  const needsCaliberSelection = ['carnimore-models', 'barreled-action'].includes(categorySlug || '');
+  const needsCaliberSelection = ['carnimore-models', 'barreled-actions'].includes(categorySlug || '');
   const needsSizeColorSelection = categorySlug === 'merch';
   const isDisabled = isAddingToCart || 
     (needsCaliberSelection && !selectedCaliber) ||
@@ -164,7 +164,7 @@ const ProductDetailsPage: React.FC = () => {
                 ? 'Accessories'
                 : categorySlug === 'nfa'
                 ? 'NFA Items'
-                : categorySlug === 'barreled-action'
+                : categorySlug === 'barreled-actions'
                 ? 'Barreled Actions'
                 : 'Merchandise',
               href: `/shop/${categorySlug}`
