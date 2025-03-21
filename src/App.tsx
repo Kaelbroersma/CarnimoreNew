@@ -7,6 +7,10 @@ import ShopPage from './pages/ShopPage';
 import CarnimoreModelsPage from './pages/CarnimoreModelsPage';
 import DuracoatPage from './pages/DuracoatPage';
 import MerchPage from './pages/MerchPage';
+import OpticsPage from './pages/shop/OpticsPage';
+import AccessoriesPage from './pages/shop/AccessoriesPage';
+import NFAPage from './pages/shop/NFAPage';
+import BarreledActionPage from './pages/shop/BarreledActionPage';
 import ProductDetailsPage from './pages/ProductDetailsPage';
 import AboutPage from './pages/AboutPage';
 import GalleryPage from './pages/GalleryPage';
@@ -18,6 +22,9 @@ import NotFoundPage from './pages/NotFoundPage';
 import TrainingPage from './pages/TrainingPage';
 import InfoPage from './pages/InfoPage';
 import LegalPage from './pages/LegalPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
+import ShippingPage from './pages/ShippingPage';
 import CheckoutPage from './pages/CheckoutPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentDeclinedPage from './pages/PaymentDeclinedPage';
@@ -80,6 +87,10 @@ function App() {
                 <Route path="/shop/carnimore-models" element={<CarnimoreModelsPage />} />
                 <Route path="/shop/duracoat" element={<DuracoatPage />} />
                 <Route path="/shop/merch" element={<MerchPage />} />
+                <Route path="/shop/optics" element={<OpticsPage />} />
+                <Route path="/shop/accessories" element={<AccessoriesPage />} />
+                <Route path="/shop/nfa" element={<NFAPage />} />
+                <Route path="/shop/barreled-action" element={<BarreledActionPage />} />
                 
                 {/* Unified product details route */}
                 <Route path="/shop/:categorySlug/:productSlug" element={<ProductDetailsPage />} />
@@ -96,6 +107,9 @@ function App() {
                 <Route path="/training" element={<TrainingPage />} />
                 <Route path="/info" element={<InfoPage />} />
                 <Route path="/legal" element={<LegalPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/shipping" element={<ShippingPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/payment/success" element={<PaymentSuccessPage />} />
                 <Route path="/payment/declined" element={<PaymentDeclinedPage />} />

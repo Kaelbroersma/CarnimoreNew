@@ -31,11 +31,13 @@ const Footer: React.FC = () => {
     {
       title: 'Products',
       items: [
-        { label: 'Carnimore Models', link: '/shop?category=carnimore-models' },
-        { label: 'Matched Sets', link: '/shop?category=matched-sets' },
-        { label: 'Custom Duracoat', link: '/shop?category=custom-duracoat' },
-        { label: 'Tikkas Models', link: '/shop?category=tikkas-models' },
-        { label: 'NFA (Suppressors)', link: '/shop?category=nfa' }
+        { label: 'Carnimore Models', link: '/shop/carnimore-models' },
+        { label: 'NFA Items', link: '/shop/nfa' },
+        { label: 'Barreled Actions', link: '/shop/barreled-action' },
+        { label: 'Custom Duracoat', link: '/shop/duracoat' },
+        { label: 'Optics', link: '/shop/optics' },
+        { label: 'Accessories', link: '/shop/accessories' },
+        { label: 'Merchandise', link: '/shop/merch' }
       ]
     }
   ];
@@ -197,6 +199,9 @@ const Footer: React.FC = () => {
               </Link>
               <Link to="/terms" className="text-gray-500 text-xs hover:text-tan transition-colors">
                 Terms of Service
+              </Link>
+              <Link to="/shipping" className="text-gray-500 text-xs hover:text-tan transition-colors">
+                Shipping & Handling
               </Link>
             </div>
           </div>
