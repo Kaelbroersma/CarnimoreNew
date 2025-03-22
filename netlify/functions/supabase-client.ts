@@ -649,72 +649,84 @@ export const handler: Handler = async (event) => {
           };
         }
 
-      case 'getCategory':
-        try {
-          if (!payload.categoryId) {
-            throw new Error('Missing categoryId parameter');
-          }
-
-          console.log('Fetching category:', {
-            timestamp: new Date().toISOString(),
-            categoryId: payload.categoryId
-          });
-
-          // First get the product to ensure it exists
-          const { data: product, error: productError } = await supabase
-            .from('products')
-            .select(`
-              category:categories (
-                category_id,
-                name,
-                description,
-                category_status,
-                ffl_required
-              )
-            `)
-            .eq('product_id', payload.categoryId)
-            .single();
-
-          if (productError) {
-            console.error('Error fetching product:', {
+        case 'getCategory':
+          try {
+            if (!payload.productId) {
+              throw new Error('Missing productId parameter');
+            }
+  
+            console.log('Fetching product category:', {
               timestamp: new Date().toISOString(),
-              error: productError,
-              categoryId: payload.categoryId
+              productId: payload.productId
             });
-            throw productError;
+  
+            // Step 1: Get product and its category_id
+            const { data: product, error: productError } = await supabase
+              .from('products')
+              .select('category_id')
+              .eq('product_id', payload.productId)
+              .single();
+  
+            if (productError) {
+              console.error('Error fetching product:', {
+                timestamp: new Date().toISOString(),
+                error: productError,
+                productId: payload.productId
+              });
+              throw productError;
+            }
+  
+            if (!product) {
+              throw new Error('Product not found');
+            }
+  
+            // Step 2: Get category details using the category_id from the product
+            const { data: category, error: categoryError } = await supabase
+              .from('categories')
+              .select('category_id, name, description, category_status, ffl_required')
+              .eq('category_id', product.category_id)
+              .single();
+  
+            if (categoryError) {
+              console.error('Error fetching category:', {
+                timestamp: new Date().toISOString(),
+                error: categoryError,
+                categoryId: product.category_id
+              });
+              throw categoryError;
+            }
+  
+            if (!category) {
+              throw new Error('Category not found');
+            }
+  
+            console.log('Category fetched:', {
+              timestamp: new Date().toISOString(),
+              categoryId: product.category_id,
+              category: category
+            });
+  
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify({ data: category })
+            };
+          } catch (error: any) {
+            console.error('Error in getCategory:', {
+              timestamp: new Date().toISOString(),
+              error: error.message
+            });
+            return {
+              statusCode: 500,
+              headers,
+              body: JSON.stringify({ 
+                error: { 
+                  message: 'Failed to fetch category',
+                  details: error.message
+                }
+              })
+            };
           }
-
-          if (!product?.category) {
-            throw new Error('Category not found');
-          }
-
-          console.log('Category fetched:', {
-            timestamp: new Date().toISOString(),
-            categoryId: payload.categoryId,
-            category: product.category
-          });
-
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ data: product.category })
-          };
-        } catch (error: any) {
-          console.error('Error in getCategory:', {
-            timestamp: new Date().toISOString(),
-            error: error.message
-          });
-          return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({ 
-              error: { 
-                message: 'Failed to fetch category',
-                details: error.message
-              }
-            })
-          };
-        }
 
       default:
         return {
