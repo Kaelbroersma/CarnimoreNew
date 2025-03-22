@@ -601,17 +601,22 @@ export const handler: Handler = async (event) => {
             throw new Error('Missing zipCode parameter');
           }
 
+          // Validate ZIP code format
+          if (!/^\d{5}$/.test(payload.zipCode)) {
+            throw new Error('Invalid ZIP code format');
+          }
+
           console.log('Searching FFL dealers:', {
             timestamp: new Date().toISOString(),
             zipCode: payload.zipCode
           });
 
-          // Search for FFL dealers within 50 miles of the provided ZIP code
+          // Query FFL dealers from database
           const { data: dealers, error: dealersError } = await supabase
             .from('ffl_dealers')
             .select('*')
-            .eq('premise_zip_code', payload.zipCode)
-            .limit(10);
+            .eq('PREMISE_ZIP_CODE', payload.zipCode)
+            .limit(25);
 
           if (dealersError) {
             console.error('Error fetching FFL dealers:', {
@@ -622,20 +627,51 @@ export const handler: Handler = async (event) => {
             throw dealersError;
           }
 
+          // Clean and validate dealer data
+          const cleanedDealers = dealers?.map(dealer => {
+            // Log raw dealer data for debugging
+            console.log('Raw dealer data:', {
+              timestamp: new Date().toISOString(),
+              dealer
+            });
+
+            // Clean and normalize data
+            const cleaned = {
+              ...dealer,
+              BUSINESS_NAME: dealer.BUSINESS_NAME?.trim() || '',
+              LICENSE_NAME: dealer.LICENSE_NAME?.trim() || '',
+              PREMISE_STREET: dealer.PREMISE_STREET?.trim() || '',
+              PREMISE_CITY: dealer.PREMISE_CITY?.trim() || '',
+              PREMISE_STATE: dealer.PREMISE_STATE?.trim() || '',
+              PREMISE_ZIP_CODE: dealer.PREMISE_ZIP_CODE?.trim() || '',
+              VOICE_PHONE: dealer.VOICE_PHONE?.trim() || '',
+              LIC_SEQN: dealer.LIC_SEQN?.trim() || ''
+            };
+
+            // Log cleaned dealer data
+            console.log('Cleaned dealer data:', {
+              timestamp: new Date().toISOString(),
+              cleaned
+            });
+
+            return cleaned;
+          });
+
           console.log('FFL dealers found:', {
             timestamp: new Date().toISOString(),
-            count: dealers?.length || 0
+            count: cleanedDealers?.length || 0
           });
 
           return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ data: dealers })
+            body: JSON.stringify({ data: cleanedDealers })
           };
         } catch (error: any) {
           console.error('Error in searchFFLDealers:', {
             timestamp: new Date().toISOString(),
-            error: error.message
+            error: error.message,
+            stack: error.stack
           });
           return {
             statusCode: 500,
@@ -649,84 +685,84 @@ export const handler: Handler = async (event) => {
           };
         }
 
-        case 'getCategory':
-          try {
-            if (!payload.productId) {
-              throw new Error('Missing productId parameter');
-            }
-  
-            console.log('Fetching product category:', {
+      case 'getCategory':
+        try {
+          if (!payload.productId) {
+            throw new Error('Missing productId parameter');
+          }
+
+          console.log('Fetching product category:', {
+            timestamp: new Date().toISOString(),
+            productId: payload.productId
+          });
+
+          // Step 1: Get product and its category_id
+          const { data: product, error: productError } = await supabase
+            .from('products')
+            .select('category_id')
+            .eq('product_id', payload.productId)
+            .single();
+
+          if (productError) {
+            console.error('Error fetching product:', {
               timestamp: new Date().toISOString(),
+              error: productError,
               productId: payload.productId
             });
-  
-            // Step 1: Get product and its category_id
-            const { data: product, error: productError } = await supabase
-              .from('products')
-              .select('category_id')
-              .eq('product_id', payload.productId)
-              .single();
-  
-            if (productError) {
-              console.error('Error fetching product:', {
-                timestamp: new Date().toISOString(),
-                error: productError,
-                productId: payload.productId
-              });
-              throw productError;
-            }
-  
-            if (!product) {
-              throw new Error('Product not found');
-            }
-  
-            // Step 2: Get category details using the category_id from the product
-            const { data: category, error: categoryError } = await supabase
-              .from('categories')
-              .select('category_id, name, description, category_status, ffl_required')
-              .eq('category_id', product.category_id)
-              .single();
-  
-            if (categoryError) {
-              console.error('Error fetching category:', {
-                timestamp: new Date().toISOString(),
-                error: categoryError,
-                categoryId: product.category_id
-              });
-              throw categoryError;
-            }
-  
-            if (!category) {
-              throw new Error('Category not found');
-            }
-  
-            console.log('Category fetched:', {
-              timestamp: new Date().toISOString(),
-              categoryId: product.category_id,
-              category: category
-            });
-  
-            return {
-              statusCode: 200,
-              headers,
-              body: JSON.stringify({ data: category })
-            };
-          } catch (error: any) {
-            console.error('Error in getCategory:', {
-              timestamp: new Date().toISOString(),
-              error: error.message
-            });
-            return {
-              statusCode: 500,
-              headers,
-              body: JSON.stringify({ 
-                error: { 
-                  message: 'Failed to fetch category',
-                  details: error.message
-                }
-              })
-            };
+            throw productError;
           }
+
+          if (!product) {
+            throw new Error('Product not found');
+          }
+
+          // Step 2: Get category details using the category_id from the product
+          const { data: category, error: categoryError } = await supabase
+            .from('categories')
+            .select('category_id, name, description, category_status, ffl_required')
+            .eq('category_id', product.category_id)
+            .single();
+
+          if (categoryError) {
+            console.error('Error fetching category:', {
+              timestamp: new Date().toISOString(),
+              error: categoryError,
+              categoryId: product.category_id
+            });
+            throw categoryError;
+          }
+
+          if (!category) {
+            throw new Error('Category not found');
+          }
+
+          console.log('Category fetched:', {
+            timestamp: new Date().toISOString(),
+            categoryId: product.category_id,
+            category: category
+          });
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ data: category })
+          };
+        } catch (error: any) {
+          console.error('Error in getCategory:', {
+            timestamp: new Date().toISOString(),
+            error: error.message
+          });
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to fetch category',
+                details: error.message
+              }
+            })
+          };
+        }
 
       default:
         return {

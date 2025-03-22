@@ -25,13 +25,38 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
         throw new Error(result.error.message);
       }
 
-      console.log('FFL search results:', {
+      // Log raw response data
+      console.log('Raw FFL search results:', {
         timestamp: new Date().toISOString(),
-        results: result.data
+        results: result.data,
+        count: result.data?.length || 0
       });
 
-      setSearchResults(result.data || []);
+      // Validate and clean data before setting
+      const cleanedResults = (result.data || []).map(dealer => ({
+        ...dealer,
+        BUSINESS_NAME: dealer.BUSINESS_NAME?.trim() || '',
+        LICENSE_NAME: dealer.LICENSE_NAME?.trim() || '',
+        PREMISE_STREET: dealer.PREMISE_STREET?.trim() || '',
+        PREMISE_CITY: dealer.PREMISE_CITY?.trim() || '',
+        PREMISE_STATE: dealer.PREMISE_STATE?.trim() || '',
+        PREMISE_ZIP_CODE: dealer.PREMISE_ZIP_CODE?.trim() || '',
+        VOICE_PHONE: dealer.VOICE_PHONE?.trim() || ''
+      }));
+
+      console.log('Cleaned FFL search results:', {
+        timestamp: new Date().toISOString(),
+        results: cleanedResults,
+        count: cleanedResults.length
+      });
+
+      setSearchResults(cleanedResults);
     } catch (err) {
+      console.error('FFL search error:', {
+        timestamp: new Date().toISOString(),
+        error: err instanceof Error ? err.message : 'Unknown error',
+        zipCode
+      });
       setError(err instanceof Error ? err.message : 'An error occurred');
       setSearchResults([]);
     } finally {
@@ -47,7 +72,8 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
   };
 
   const handleDealerSelect = (dealer: FFLDealer) => {
-    console.log('Selected dealer:', {
+    // Log dealer selection
+    console.log('Selected dealer details:', {
       timestamp: new Date().toISOString(),
       dealer: {
         businessName: dealer.BUSINESS_NAME,
@@ -58,9 +84,11 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
           city: dealer.PREMISE_CITY,
           state: dealer.PREMISE_STATE,
           zip: dealer.PREMISE_ZIP_CODE
-        }
+        },
+        phone: dealer.VOICE_PHONE
       }
     });
+
     setSelectedDealer(dealer);
     onDealerSelect(dealer);
   };
@@ -76,56 +104,68 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
   };
 
   const getDealerName = (dealer: FFLDealer): string => {
-    // Log raw values for debugging
-    console.log('Dealer name data:', {
+    // Log raw name data for debugging
+    console.log('Raw dealer name data:', {
       timestamp: new Date().toISOString(),
       businessName: dealer.BUSINESS_NAME,
       licenseName: dealer.LICENSE_NAME,
       licenseNumber: dealer.LIC_SEQN
     });
 
-    // Carefully clean and check both name fields
+    // Clean and validate business name
     const businessName = dealer.BUSINESS_NAME?.trim().replace(/\s+/g, ' ') || '';
     const licenseName = dealer.LICENSE_NAME?.trim().replace(/\s+/g, ' ') || '';
 
-    // Use business name if available and not empty
-    if (businessName && businessName !== '') {
-      return businessName;
-    }
+    // Log cleaned names
+    console.log('Cleaned dealer names:', {
+      timestamp: new Date().toISOString(),
+      businessName,
+      licenseName
+    });
 
-    // Fall back to license name if available and not empty
-    if (licenseName && licenseName !== '') {
-      return licenseName;
-    }
-
-    // Last resort
+    // Return the first non-empty name
+    if (businessName) return businessName;
+    if (licenseName) return licenseName;
+    
     return 'Unknown Dealer';
   };
 
   const formatAddress = (dealer: FFLDealer): string => {
+    // Log raw address data
+    console.log('Raw address data:', {
+      timestamp: new Date().toISOString(),
+      street: dealer.PREMISE_STREET,
+      city: dealer.PREMISE_CITY,
+      state: dealer.PREMISE_STATE,
+      zip: dealer.PREMISE_ZIP_CODE
+    });
+
     const parts = [];
 
-    // Add premise street if available
+    // Clean and add each address component
     if (dealer.PREMISE_STREET?.trim()) {
       parts.push(dealer.PREMISE_STREET.trim().replace(/\s+/g, ' '));
     }
-
-    // Add premise city if available
     if (dealer.PREMISE_CITY?.trim()) {
       parts.push(dealer.PREMISE_CITY.trim().replace(/\s+/g, ' '));
     }
-
-    // Add premise state if available
     if (dealer.PREMISE_STATE?.trim()) {
       parts.push(dealer.PREMISE_STATE.trim());
     }
-
-    // Add premise zip code if available
     if (dealer.PREMISE_ZIP_CODE?.trim()) {
       parts.push(dealer.PREMISE_ZIP_CODE.trim());
     }
 
-    return parts.join(', ') || 'No address provided';
+    const formattedAddress = parts.join(', ');
+
+    // Log formatted address
+    console.log('Formatted address:', {
+      timestamp: new Date().toISOString(),
+      parts,
+      formattedAddress
+    });
+
+    return formattedAddress || 'No address provided';
   };
 
   const formatLicenseNumber = (license: string): string => {
