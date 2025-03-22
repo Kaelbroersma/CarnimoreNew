@@ -20,7 +20,7 @@ type CheckoutStep = 'contact' | 'shipping' | 'ffl' | 'payment';
 
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
-  const { items, clearCart } = useCartStore();
+  const { items, clearCart, requiresFFL, hasNonFFLItems } = useCartStore();
   const { user } = useAuthStore();
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'failed'>('pending');
@@ -31,6 +31,7 @@ const CheckoutPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completedSteps, setCompletedSteps] = useState<Set<CheckoutStep>>(new Set());
+  const [paymentData, setPaymentData] = useState<any>(null);
 
   const [contactInfo, setContactInfo] = useState({
     firstName: user?.user_metadata?.first_name || '',
@@ -52,23 +53,8 @@ const CheckoutPage: React.FC = () => {
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
-  const hasFirearms = items.some(item => {
-    const FFL_REQUIRED_CATEGORIES = [
-      '9079f9f6-6a43-4085-8638-d281c5345891', // Carnimore Models
-      'ef61bf50-8212-4ea6-b8e8-766b0686ed97', // Barreled Actions  
-      '2cb5e72e-c5bf-4856-9325-8751ebee3758'  // NFA Items
-    ];
-    return item.category && FFL_REQUIRED_CATEGORIES.includes(item.category.category_id);
-  });
-
-  const hasNonFirearms = items.some(item => {
-    const FFL_REQUIRED_CATEGORIES = [
-      '9079f9f6-6a43-4085-8638-d281c5345891',
-      'ef61bf50-8212-4ea6-b8e8-766b0686ed97',
-      '2cb5e72e-c5bf-4856-9325-8751ebee3758'
-    ];
-    return !item.category || !FFL_REQUIRED_CATEGORIES.includes(item.category.category_id);
-  });
+  const needsFFL = requiresFFL();
+  const needsShipping = hasNonFFLItems();
 
   const steps = [
     { 
@@ -77,17 +63,17 @@ const CheckoutPage: React.FC = () => {
       isActive: currentStep === 'contact', 
       isComplete: completedSteps.has('contact')
     },
-    ...(hasNonFirearms ? [{ 
-      id: 'shipping', 
-      label: 'Shipping', 
-      isActive: currentStep === 'shipping', 
-      isComplete: completedSteps.has('shipping')
-    }] : []),
-    ...(hasFirearms ? [{ 
+    ...(needsFFL ? [{ 
       id: 'ffl', 
       label: 'FFL Dealer', 
       isActive: currentStep === 'ffl', 
       isComplete: completedSteps.has('ffl')
+    }] : []),
+    ...(needsShipping ? [{ 
+      id: 'shipping', 
+      label: 'Shipping', 
+      isActive: currentStep === 'shipping', 
+      isComplete: completedSteps.has('shipping')
     }] : []),
     { 
       id: 'payment', 
@@ -140,9 +126,9 @@ const CheckoutPage: React.FC = () => {
 
   const handleContactSubmit = () => {
     markStepComplete('contact');
-    if (hasFirearms) {
+    if (needsFFL) {
       setCurrentStep('ffl');
-    } else if (hasNonFirearms) {
+    } else if (needsShipping) {
       setCurrentStep('shipping');
     } else {
       setCurrentStep('payment');
@@ -151,17 +137,13 @@ const CheckoutPage: React.FC = () => {
 
   const handleShippingSubmit = () => {
     markStepComplete('shipping');
-    if (hasFirearms && !selectedFFL) {
-      setCurrentStep('ffl');
-    } else {
-      setCurrentStep('payment');
-    }
+    setCurrentStep('payment');
   };
 
   const handleFFLSelect = (dealer: FFLDealer) => {
     setSelectedFFL(dealer);
     markStepComplete('ffl');
-    if (hasNonFirearms && !shippingAddress.address) {
+    if (needsShipping) {
       setCurrentStep('shipping');
     } else {
       setCurrentStep('payment');
@@ -176,6 +158,7 @@ const CheckoutPage: React.FC = () => {
 
     try {
       if (!user) {
+        setPaymentData(paymentData);
         setShowAuthModal(true);
         return;
       }
@@ -187,8 +170,8 @@ const CheckoutPage: React.FC = () => {
         items,
         email: contactInfo.email,
         phone: contactInfo.phone,
-        shippingAddress: hasNonFirearms ? shippingAddress : undefined,
-        fflDealerInfo: hasFirearms ? selectedFFL : undefined
+        shippingAddress: needsShipping ? shippingAddress : undefined,
+        fflDealerInfo: needsFFL ? selectedFFL : undefined
       });
 
       if (result.error) {
@@ -265,7 +248,19 @@ const CheckoutPage: React.FC = () => {
                 />
               </CheckoutSection>
 
-              {hasNonFirearms && (
+              {needsFFL && (
+                <CheckoutSection
+                  title="FFL Dealer Selection"
+                  isActive={currentStep === 'ffl'}
+                >
+                  <FFLDealerSearch
+                    onDealerSelect={handleFFLSelect}
+                    className="bg-transparent p-0 shadow-none"
+                  />
+                </CheckoutSection>
+              )}
+
+              {needsShipping && (
                 <CheckoutSection
                   title="Shipping Information"
                   isActive={currentStep === 'shipping'}
@@ -275,18 +270,6 @@ const CheckoutPage: React.FC = () => {
                     onChange={setShippingAddress}
                     onSubmit={handleShippingSubmit}
                     loading={loading}
-                  />
-                </CheckoutSection>
-              )}
-
-              {hasFirearms && (
-                <CheckoutSection
-                  title="FFL Dealer Selection"
-                  isActive={currentStep === 'ffl'}
-                >
-                  <FFLDealerSearch
-                    onDealerSelect={handleFFLSelect}
-                    className="bg-transparent p-0 shadow-none"
                   />
                 </CheckoutSection>
               )}

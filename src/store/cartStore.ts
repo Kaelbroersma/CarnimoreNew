@@ -9,7 +9,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   image: string;
-  category?: {
+  category: {
     category_id: string;
     name: string;
     ffl_required: boolean;
@@ -176,12 +176,14 @@ export const useCartStore = create<CartStore>()(
         return get().items.reduce((total, item) => total + (item.price * item.quantity), 0);
       },
 
+      // Check if any items require FFL based on category
       requiresFFL: () => {
         return get().items.some(item => 
           item.category?.ffl_required === true
         );
       },
 
+      // Check if there are any non-FFL items
       hasNonFFLItems: () => {
         return get().items.some(item => 
           !item.category?.ffl_required
