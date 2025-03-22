@@ -10,13 +10,35 @@ export const paymentService = {
     try {
       // Validate required fields
       if (!data.cardNumber?.trim() || !data.expiryMonth?.trim() || !data.expiryYear?.trim() || 
-          !data.cvv?.trim() || !data.amount || !data.orderId || 
-          !data.shippingAddress?.address?.trim() || !data.shippingAddress?.zipCode?.trim()) {
+          !data.cvv?.trim() || !data.amount || !data.orderId || !data.email || !data.phone) {
         throw new Error('All payment fields are required');
       }
 
-      // Format and validate card number
+      // Check if order requires FFL
+      const requiresFFL = data.items.some((item: any) => 
+        item.id.startsWith('CM') || // Carnimore Models
+        item.id.startsWith('BA')    // Barreled Actions
+      );
+
+      // Validate FFL dealer info if required
+      if (requiresFFL && !data.fflDealerInfo) {
+        throw new Error('FFL dealer information required for firearm purchases');
+      }
+
+      // Validate shipping address if non-firearm items are present
+      const hasNonFirearms = data.items.some((item: any) => 
+        !item.id.startsWith('CM') && 
+        !item.id.startsWith('BA')
+      );
+
+      if (hasNonFirearms && !data.shippingAddress?.address?.trim()) {
+        throw new Error('Shipping address is required for non-firearm items');
+      }
+
+      // Format card number by removing spaces
       const cardNumber = data.cardNumber.replace(/\s+/g, '');
+      
+      // Validate card number
       if (!/^\d{15,16}$/.test(cardNumber)) {
         throw new Error('Invalid card number');
       }
@@ -44,11 +66,6 @@ export const paymentService = {
       
       // Format amount
       const formattedAmount = data.amount.toFixed(2);
-      
-      // Validate shipping address
-      if (!data.shippingAddress.address.trim() || !data.shippingAddress.zipCode.trim()) {
-        throw new Error('Shipping address and ZIP code are required');
-      }
 
       // Prepare payment request data
       const paymentRequest = {
@@ -58,7 +75,7 @@ export const paymentService = {
         cvv: data.cvv,
         amount: formattedAmount,
         shippingAddress: data.shippingAddress,
-        billingAddress: data.billingAddress,
+        fflDealerInfo: data.fflDealerInfo,
         orderId: data.orderId,
         items: data.items,
         phone: data.phone,

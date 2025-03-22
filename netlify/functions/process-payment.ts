@@ -37,19 +37,40 @@ export const handler: Handler = async (event) => {
       billingAddress,
       items,
       email,
-      phone
+      phone,
+      fflDealerInfo // New field for FFL dealer info
     } = paymentData;
 
     // Get user ID from auth context if available
     const userId = event.headers.authorization?.split('Bearer ')[1] || null;
 
+    // Check if order requires FFL
+    const requiresFFL = items.some((item: any) => 
+      item.id.startsWith('CM') || // Carnimore Models
+      item.id.startsWith('BA')    // Barreled Actions
+    );
+
+    // Validate FFL dealer info if required
+    if (requiresFFL && !fflDealerInfo) {
+      throw new Error('FFL dealer information required for firearm purchases');
+    }
+
     // Format addresses for database
-    const formattedShippingAddress = [
-      shippingAddress.address,
-      shippingAddress.city,
-      shippingAddress.state,
-      shippingAddress.zipCode
-    ].filter(Boolean).join(', ');
+    const formattedShippingAddress = requiresFFL ? 
+      // Use FFL address for firearm-only orders
+      [
+        fflDealerInfo.PREMISE_STREET,
+        fflDealerInfo.PREMISE_CITY,
+        fflDealerInfo.PREMISE_STATE,
+        fflDealerInfo.PREMISE_ZIP_CODE
+      ].filter(Boolean).join(', ') :
+      // Use provided shipping address for non-firearm orders
+      [
+        shippingAddress.address,
+        shippingAddress.city,
+        shippingAddress.state,
+        shippingAddress.zipCode
+      ].filter(Boolean).join(', ');
 
     const formattedBillingAddress = billingAddress ? [
       billingAddress.address,
@@ -82,7 +103,7 @@ export const handler: Handler = async (event) => {
 
       return {
         product_id: item.id,
-        name: product?.name || 'Unknown Product', // Include product name
+        name: product?.name || 'Unknown Product',
         quantity: item.quantity,
         price: item.price,
         total: item.price * item.quantity,
@@ -107,7 +128,9 @@ export const handler: Handler = async (event) => {
         created_at: new Date().toISOString(),
         order_items: formattedOrderItems,
         phone_number: phone,
-        email: email
+        email: email,
+        requires_ffl: requiresFFL,
+        ffl_dealer_info: requiresFFL ? fflDealerInfo : null
       })
       .select()
       .single();

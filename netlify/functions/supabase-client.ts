@@ -595,6 +595,60 @@ export const handler: Handler = async (event) => {
           body: JSON.stringify({ data: order })
         };
 
+      case 'searchFFLDealers':
+        try {
+          if (!payload.zipCode) {
+            throw new Error('Missing zipCode parameter');
+          }
+
+          console.log('Searching FFL dealers:', {
+            timestamp: new Date().toISOString(),
+            zipCode: payload.zipCode
+          });
+
+          // Search for FFL dealers within 50 miles of the provided ZIP code
+          const { data: dealers, error: dealersError } = await supabase
+            .from('ffl_dealers')
+            .select('*')
+            .eq('PREMISE_ZIP_CODE', payload.zipCode)
+            .limit(10);
+
+          if (dealersError) {
+            console.error('Error fetching FFL dealers:', {
+              timestamp: new Date().toISOString(),
+              error: dealersError,
+              zipCode: payload.zipCode
+            });
+            throw dealersError;
+          }
+
+          console.log('FFL dealers found:', {
+            timestamp: new Date().toISOString(),
+            count: dealers?.length || 0
+          });
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ data: dealers })
+          };
+        } catch (error: any) {
+          console.error('Error in searchFFLDealers:', {
+            timestamp: new Date().toISOString(),
+            error: error.message
+          });
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to search FFL dealers',
+                details: error.message
+              }
+            })
+          };
+        }
+
       default:
         return {
           statusCode: 400,
