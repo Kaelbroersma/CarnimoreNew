@@ -57,7 +57,36 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
   };
 
   const getDealerName = (dealer: FFLDealer): string => {
-    return dealer.BUSINESS_NAME?.trim() || dealer.LICENSE_NAME?.trim() || 'Unknown Dealer';
+    // Use business name if available, otherwise use license name
+    const businessName = dealer.BUSINESS_NAME?.trim();
+    const licenseName = dealer.LICENSE_NAME?.trim();
+    return businessName || licenseName || 'Unknown Dealer';
+  };
+
+  const formatAddress = (dealer: FFLDealer): string => {
+    const parts = [];
+    
+    // Add street address if available
+    if (dealer.PREMISE_STREET?.trim()) {
+      parts.push(dealer.PREMISE_STREET.trim());
+    }
+    
+    // Add city if available
+    if (dealer.PREMISE_CITY?.trim()) {
+      parts.push(dealer.PREMISE_CITY.trim());
+    }
+    
+    // Add state if available
+    if (dealer.PREMISE_STATE?.trim()) {
+      parts.push(dealer.PREMISE_STATE.trim());
+    }
+    
+    // Add ZIP code if available
+    if (dealer.PREMISE_ZIP_CODE?.trim()) {
+      parts.push(dealer.PREMISE_ZIP_CODE.trim());
+    }
+    
+    return parts.join(', ') || 'No address provided';
   };
 
   const formatLicenseNumber = (license: string): string => {
@@ -143,12 +172,14 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
                   </h3>
                   <p className="text-gray-400 flex items-center gap-2 mb-2">
                     <MapPin size={16} className="text-tan" />
-                    {dealer.PREMISE_STREET}, {dealer.PREMISE_CITY}, {dealer.PREMISE_STATE} {dealer.PREMISE_ZIP_CODE}
+                    {formatAddress(dealer)}
                   </p>
-                  <p className="text-gray-400 flex items-center gap-2">
-                    <Phone size={16} className="text-tan" />
-                    {formatPhoneNumber(dealer.VOICE_PHONE)}
-                  </p>
+                  {dealer.VOICE_PHONE && (
+                    <p className="text-gray-400 flex items-center gap-2">
+                      <Phone size={16} className="text-tan" />
+                      {formatPhoneNumber(dealer.VOICE_PHONE)}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="mt-2 text-sm text-gray-500">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CreditCard, Calendar as CalendarIcon, Lock, AlertCircle } from 'lucide-react';
+import { CreditCard, Calendar as CalendarIcon, Lock, AlertCircle, MapPin } from 'lucide-react';
 import Button from '../Button';
 import type { PaymentFormData } from '../../types/payment';
 
@@ -14,10 +14,18 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
     expiryMonth: '',
     expiryYear: '',
     cvv: '',
-    nameOnCard: ''
+    nameOnCard: '',
+    billingAddress: {
+      address: '',
+      city: '',
+      state: '',
+      zipCode: ''
+    }
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stateError, setStateError] = useState<string | null>(null);
+  const [zipError, setZipError] = useState<string | null>(null);
 
   // Generate month options
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -32,13 +40,86 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
     return { value: year, label: year };
   });
 
+  const US_STATES = [
+    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+  ];
+
+  const validateState = (state: string): boolean => {
+    if (!state) return false;
+    const upperState = state.toUpperCase();
+    if (!US_STATES.includes(upperState)) {
+      setStateError('Please enter a valid 2-letter state abbreviation (e.g., AZ for Arizona)');
+      return false;
+    }
+    setStateError(null);
+    return true;
+  };
+
+  const validateZipCode = (zip: string): boolean => {
+    if (!zip || !/^\d{5}$/.test(zip)) {
+      setZipError('Please enter a valid 5-digit ZIP code');
+      return false;
+    }
+    setZipError(null);
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
-      await onSubmit(formData);
+      // Validate billing address
+      if (!formData.billingAddress.address?.trim()) {
+        throw new Error('Billing address is required');
+      }
+      if (!formData.billingAddress.city?.trim()) {
+        throw new Error('City is required');
+      }
+      if (!validateState(formData.billingAddress.state)) {
+        throw new Error('Valid state is required');
+      }
+      if (!validateZipCode(formData.billingAddress.zipCode)) {
+        throw new Error('Valid ZIP code is required');
+      }
+
+      // Format card number by removing spaces
+      const cardNumber = formData.cardNumber.replace(/\s+/g, '');
+      
+      // Validate card number
+      if (!/^\d{15,16}$/.test(cardNumber)) {
+        throw new Error('Invalid card number');
+      }
+      
+      // Validate expiry date
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const expMonth = parseInt(formData.expiryMonth);
+      const expYear = parseInt(formData.expiryYear);
+      
+      if (expYear < currentYear || 
+          (expYear === currentYear && expMonth < currentMonth)) {
+        throw new Error('Card has expired');
+      }
+      
+      // Validate CVV
+      if (!/^\d{3,4}$/.test(formData.cvv)) {
+        throw new Error('Invalid CVV');
+      }
+
+      await onSubmit({
+        ...formData,
+        cardNumber,
+        billingAddress: {
+          ...formData.billingAddress,
+          state: formData.billingAddress.state.toUpperCase()
+        }
+      });
     } catch (error: any) {
       setError(error.message || 'Failed to process payment');
       setLoading(false);
@@ -171,6 +252,120 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
         </div>
       </div>
 
+      {/* Billing Address Section */}
+      <div className="border-t border-gunmetal-light pt-6">
+        <h3 className="font-heading text-lg font-bold mb-4">Billing Address</h3>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Street Address <span className="text-tan">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                required
+                value={formData.billingAddress.address}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  billingAddress: {
+                    ...prev.billingAddress,
+                    address: e.target.value
+                  }
+                }))}
+                className="w-full bg-dark-gray border border-gunmetal-light rounded-sm pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+                autoComplete="billing street-address"
+              />
+              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                City <span className="text-tan">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.billingAddress.city}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  billingAddress: {
+                    ...prev.billingAddress,
+                    city: e.target.value
+                  }
+                }))}
+                className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+                autoComplete="billing address-level2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                State <span className="text-tan">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={2}
+                placeholder="AZ"
+                value={formData.billingAddress.state}
+                onChange={(e) => {
+                  const value = e.target.value.toUpperCase();
+                  setFormData(prev => ({
+                    ...prev,
+                    billingAddress: {
+                      ...prev.billingAddress,
+                      state: value
+                    }
+                  }));
+                  if (value.length === 2) {
+                    validateState(value);
+                  }
+                }}
+                className={`w-full bg-dark-gray border ${stateError ? 'border-red-500' : 'border-gunmetal-light'} rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent uppercase`}
+                autoComplete="billing address-level1"
+              />
+              {stateError && (
+                <p className="text-red-500 text-xs mt-1">{stateError}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                ZIP <span className="text-tan">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={5}
+                pattern="[0-9]{5}"
+                value={formData.billingAddress.zipCode}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 5);
+                  setFormData(prev => ({
+                    ...prev,
+                    billingAddress: {
+                      ...prev.billingAddress,
+                      zipCode: value
+                    }
+                  }));
+                  if (value.length === 5) {
+                    validateZipCode(value);
+                  }
+                }}
+                className={`w-full bg-dark-gray border ${zipError ? 'border-red-500' : 'border-gunmetal-light'} rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent`}
+                autoComplete="billing postal-code"
+              />
+              {zipError && (
+                <p className="text-red-500 text-xs mt-1">{zipError}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-8">
         <Button
           type="submit"
@@ -178,7 +373,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
           fullWidth
           disabled={loading}
         >
-          {loading ? 'Processing...' : 'Complete Order'}
+          {loading ? 'Processing...' : 'Complete Payment'}
         </Button>
       </div>
 
