@@ -17,6 +17,7 @@ export interface CheckoutData {
     zipCode: string;
   };
   ffl?: any; // FFL dealer info
+  payment?: any; // Payment info
 }
 
 export const useCheckoutFlow = () => {
@@ -125,7 +126,7 @@ export const useCheckoutFlow = () => {
     }
   };
 
-  const updateCheckoutData = (step: CheckoutStep, data: any) => {
+  const updateCheckoutData = (step: keyof CheckoutData, data: any) => {
     console.log('Updating checkout data:', {
       timestamp: new Date().toISOString(),
       step,
@@ -134,7 +135,10 @@ export const useCheckoutFlow = () => {
     
     setCheckoutData(prev => ({
       ...prev,
-      [step]: data
+      [step]: {
+        ...prev[step],
+        ...data
+      }
     }));
   };
 
