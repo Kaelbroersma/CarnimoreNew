@@ -121,6 +121,12 @@ export const useCheckoutFlow = () => {
   };
 
   const updateCheckoutData = (step: CheckoutStep, data: any) => {
+    console.log('Updating checkout data:', {
+      timestamp: new Date().toISOString(),
+      step,
+      data
+    });
+    
     setCheckoutData(prev => ({
       ...prev,
       [step]: data

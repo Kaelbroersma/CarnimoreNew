@@ -58,7 +58,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
     }
 
     // Validate state
-    if (!formData.state?.trim() || !validateState(formData.state)) {
+    if (!validateState(formData.state)) {
       isValid = false;
     }
 
@@ -75,9 +75,21 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
-      onSubmit();
+    
+    if (!validateForm()) {
+      return;
     }
+
+    // Normalize data before submitting
+    const normalizedData = {
+      address: formData.address.trim(),
+      city: formData.city.trim(),
+      state: formData.state.toUpperCase(),
+      zipCode: formData.zipCode.trim()
+    };
+
+    onChange(normalizedData);
+    onSubmit();
   };
 
   return (
@@ -149,7 +161,10 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
             maxLength={5}
             pattern="[0-9]{5}"
             value={formData.zipCode}
-            onChange={(e) => onChange({ zipCode: e.target.value.replace(/\D/g, '').slice(0, 5) })}
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, '').slice(0, 5);
+              onChange({ zipCode: value });
+            }}
             className={`w-full bg-dark-gray border ${zipError ? 'border-red-500' : 'border-gunmetal-light'} rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent`}
             autoComplete="postal-code"
           />
