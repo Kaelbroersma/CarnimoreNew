@@ -6,11 +6,10 @@ import { useAuthStore } from '../store/authStore';
 import { paymentService } from '../services/paymentService';
 import { useCheckoutFlow } from '../hooks/useCheckoutFlow';
 import PaymentProcessingModal from '../components/PaymentProcessingModal';
-import PaymentAuthModal from '../components/Payment/PaymentAuthModal';
 import { useOrderPolling } from '../hooks/useOrderPolling';
 import Button from '../components/Button';
 import CheckoutSteps from '../components/Checkout/CheckoutSteps';
-import CheckoutBreadcrumbs from '../components/Checkout/CheckoutBreadCrumbs';
+import CheckoutBreadcrumbs from '../components/Checkout/CheckoutBreadcrumbs';
 import CheckoutSection from '../components/Checkout/CheckoutSection';
 import OrderSummary from '../components/Checkout/OrderSummary';
 import ContactForm from '../components/Checkout/ContactForm';
@@ -58,7 +57,6 @@ const CheckoutPage: React.FC = () => {
   });
 
   const [fflData, setFflData] = useState<FFLDealer | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'failed'>('pending');
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
@@ -166,12 +164,6 @@ const CheckoutPage: React.FC = () => {
       const tax = subtotal * 0.08;
       const total = subtotal + tax;
 
-      // If user is not logged in, show auth modal
-      if (!user) {
-        setShowAuthModal(true);
-        return;
-      }
-
       console.log('Processing payment with data:', {
         timestamp: new Date().toISOString(),
         contactData,
@@ -198,13 +190,13 @@ const CheckoutPage: React.FC = () => {
         fflDealerInfo: fflData
       };
 
+      setShowProcessingModal(true);
       const result = await paymentService.processPayment(paymentData);
 
       if (result.error) {
         throw new Error(result.error.message);
       }
 
-      setShowProcessingModal(true);
     } catch (error: any) {
       console.error('Payment error:', {
         timestamp: new Date().toISOString(),
@@ -212,14 +204,9 @@ const CheckoutPage: React.FC = () => {
         orderId: newOrderId
       });
       setError(error.message);
+      setShowProcessingModal(false);
       setLoading(false);
     }
-  };
-
-  const handleAuthSuccess = () => {
-    setShowAuthModal(false);
-    // Re-attempt payment now that user is authenticated
-    handlePaymentSubmit(checkoutData.payment);
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -242,14 +229,6 @@ const CheckoutPage: React.FC = () => {
         }}
       />
 
-      {/* Auth Modal */}
-      <PaymentAuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={handleAuthSuccess}
-        orderId={orderId || ''}
-      />
-
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
           {(error || flowError) && (
@@ -268,6 +247,14 @@ const CheckoutPage: React.FC = () => {
           </button>
 
           <div className="mb-12">
+            <CheckoutSteps
+              steps={[
+                { id: 'contact', label: 'Contact', isActive: currentStep === 'contact', isComplete: completedSteps.has('contact') },
+                { id: 'shipping', label: 'Shipping', isActive: currentStep === 'shipping', isComplete: completedSteps.has('shipping') },
+                { id: 'ffl', label: 'FFL Dealer', isActive: currentStep === 'ffl', isComplete: completedSteps.has('ffl') },
+                { id: 'payment', label: 'Payment', isActive: currentStep === 'payment', isComplete: completedSteps.has('payment') }
+              ].filter(step => availableSteps.includes(step.id as CheckoutStep))}
+            />
             <CheckoutBreadcrumbs
               steps={availableSteps}
               currentStep={currentStep}
