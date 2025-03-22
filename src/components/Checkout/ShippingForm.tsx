@@ -35,20 +35,28 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setStateError(null);
+    setZipError(null);
 
-    // Only validate state and ZIP
+    // Defensive check for state
+    if (!formData.state) {
+      setStateError('State is required');
+      return;
+    }
+
+    // Validate state (must be 2 capital letters from our list)
     const upperState = formData.state.toUpperCase();
     if (!US_STATES.includes(upperState)) {
       setStateError('Please enter a valid 2-letter state abbreviation (e.g., AZ for Arizona)');
       return;
     }
 
-    if (!/^\d{5}$/.test(formData.zipCode)) {
+    // Validate ZIP code (must be 5 digits)
+    if (!formData.zipCode || !/^\d{5}$/.test(formData.zipCode)) {
       setZipError('Please enter a valid 5-digit ZIP code');
       return;
     }
 
-    // If we get here, validation passed
     onSubmit();
   };
 
@@ -93,7 +101,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
             required
             maxLength={2}
             placeholder="AZ"
-            value={formData.state}
+            value={formData.state || ''}
             onChange={(e) => {
               const value = e.target.value.toUpperCase();
               onChange({ state: value });
@@ -114,7 +122,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
             type="text"
             required
             maxLength={5}
-            value={formData.zipCode}
+            value={formData.zipCode || ''}
             onChange={(e) => {
               const value = e.target.value.replace(/\D/g, '').slice(0, 5);
               onChange({ zipCode: value });
