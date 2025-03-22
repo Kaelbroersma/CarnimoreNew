@@ -235,9 +235,9 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
         <div className="space-y-4">
           {searchResults.map((dealer) => (
             <div
-              key={dealer.LIC_SEQN}
+              key={dealer.lic_seqn}
               className={`border rounded-sm p-4 cursor-pointer transition-all duration-300 ${
-                selectedDealer?.LIC_SEQN === dealer.LIC_SEQN
+                selectedDealer?.lic_seqn === dealer.lic_seqn
                   ? 'border-tan bg-tan/5'
                   : 'border-gunmetal-light bg-dark-gray hover:border-tan/50'
               }`}
@@ -253,16 +253,16 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
                     <MapPin size={16} className="text-tan" />
                     {formatAddress(dealer)}
                   </p>
-                  {dealer.VOICE_PHONE && (
+                  {dealer.voice_phone && (
                     <p className="text-gray-400 flex items-center gap-2">
                       <Phone size={16} className="text-tan" />
-                      {formatPhoneNumber(dealer.VOICE_PHONE)}
+                      {formatPhoneNumber(dealer.voice_phone)}
                     </p>
                   )}
                 </div>
               </div>
               <div className="mt-2 text-sm text-gray-500">
-                {formatLicenseNumber(dealer.LIC_SEQN)}
+                {formatLicenseNumber(dealer.lic_seqn)}
               </div>
             </div>
           ))}

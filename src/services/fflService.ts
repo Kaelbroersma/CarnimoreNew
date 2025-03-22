@@ -42,14 +42,14 @@ export const fflService = {
         // Ensure all required fields exist
         const cleanedDealer = {
           ...dealer,
-          BUSINESS_NAME: dealer.BUSINESS_NAME?.trim() || '',
-          LICENSE_NAME: dealer.LICENSE_NAME?.trim() || '',
-          PREMISE_STREET: dealer.PREMISE_STREET?.trim() || '',
-          PREMISE_CITY: dealer.PREMISE_CITY?.trim() || '',
-          PREMISE_STATE: dealer.PREMISE_STATE?.trim() || '',
-          PREMISE_ZIP_CODE: dealer.PREMISE_ZIP_CODE?.trim() || '',
-          VOICE_PHONE: dealer.VOICE_PHONE?.trim() || '',
-          LIC_SEQN: dealer.LIC_SEQN?.trim() || ''
+          business_name: dealer.business_name?.trim() || '',
+          license_name: dealer.license_name?.trim() || '',
+          premise_street: dealer.premise_street?.trim() || '',
+          premise_city: dealer.premise_city?.trim() || '',
+          premise_state: dealer.premise_state?.trim() || '',
+          premise_zip_code: dealer.premise_zip_code?.trim() || '',
+          voice_phone: dealer.voice_phone?.trim() || '',
+          lic_seqn: dealer.lic_seqn?.trim() || ''
         };
 
         // Log cleaned dealer data
