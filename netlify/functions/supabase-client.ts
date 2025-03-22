@@ -608,7 +608,7 @@ export const handler: Handler = async (event) => {
 
           // Search for FFL dealers within 50 miles of the provided ZIP code
           const { data: dealers, error: dealersError } = await supabase
-            .from('ffldealers')
+            .from('"FFLDealers"')
             .select('*')
             .eq('PREMISE_ZIP_CODE', payload.zipCode)
             .limit(10);
