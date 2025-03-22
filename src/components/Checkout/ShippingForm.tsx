@@ -79,10 +79,28 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
     return isValid;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
+    e.stopPropagation();
+
+    console.log('Shipping form submit attempt:', {
+      timestamp: new Date().toISOString(),
+      formData
+    });
+
+    // Validate all fields
+    const isValid = validateForm();
+
+    console.log('Shipping form validation result:', {
+      timestamp: new Date().toISOString(),
+      isValid,
+      errors: {
+        state: stateError,
+        zip: zipError
+      }
+    });
+
+    if (!isValid) {
       return;
     }
 
@@ -96,15 +114,18 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
 
     console.log('Submitting shipping form:', {
       timestamp: new Date().toISOString(),
-      data: normalizedData
+      normalizedData
     });
 
+    // Update form data with normalized values
     onChange(normalizedData);
+    
+    // Call onSubmit to proceed to next step
     onSubmit();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-1">
           Street Address <span className="text-tan">*</span>

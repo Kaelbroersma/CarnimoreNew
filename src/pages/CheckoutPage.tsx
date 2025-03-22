@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
+import { useAuthStore } from '../store/authStore';
+import { paymentService } from '../services/paymentService';
 import { useCheckoutFlow } from '../hooks/useCheckoutFlow';
 import PaymentProcessingModal from '../components/PaymentProcessingModal';
 import PaymentAuthModal from '../components/Payment/PaymentAuthModal';
@@ -18,6 +20,7 @@ import PaymentForm from '../components/Payment/PaymentForm';
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { items, clearCart } = useCartStore();
+  const { user } = useAuthStore();
   const { 
     currentStep, 
     completedSteps,
@@ -40,10 +43,15 @@ const CheckoutPage: React.FC = () => {
   const [paymentData, setPaymentData] = useState<any>(null);
 
   useEffect(() => {
-    if (items.length === 0) {
-      navigate('/shop');
+    if (user) {
+      updateCheckoutData('contact', {
+        firstName: user.user_metadata?.first_name || '',
+        lastName: user.user_metadata?.last_name || '',
+        email: user.email || '',
+        phone: checkoutData.contact?.phone || ''
+      });
     }
-  }, [items, navigate]);
+  }, [user]);
 
   useOrderPolling({
     orderId,

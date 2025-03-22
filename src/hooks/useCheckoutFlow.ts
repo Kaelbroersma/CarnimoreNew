@@ -139,18 +139,41 @@ export const useCheckoutFlow = () => {
   };
 
   const validateStep = (step: CheckoutStep): boolean => {
+    console.log('Validating step:', {
+      timestamp: new Date().toISOString(),
+      step,
+      data: checkoutData[step]
+    });
+
     switch (step) {
       case 'contact':
         const { firstName, lastName, email, phone } = checkoutData.contact;
-        return !!(firstName && lastName && email && phone);
+        const isContactValid = !!(firstName && lastName && email && phone);
+        console.log('Contact validation result:', {
+          timestamp: new Date().toISOString(),
+          isValid: isContactValid,
+          data: checkoutData.contact
+        });
+        return isContactValid;
       
       case 'shipping':
         if (!checkoutData.shipping) return false;
         const { address, city, state, zipCode } = checkoutData.shipping;
-        return !!(address && city && state && zipCode);
+        const isShippingValid = !!(address && city && state && zipCode);
+        console.log('Shipping validation result:', {
+          timestamp: new Date().toISOString(),
+          isValid: isShippingValid,
+          data: checkoutData.shipping
+        });
+        return isShippingValid;
       
       case 'ffl':
-        return !!checkoutData.ffl;
+        const isFFLValid = !!checkoutData.ffl;
+        console.log('FFL validation result:', {
+          timestamp: new Date().toISOString(),
+          isValid: isFFLValid
+        });
+        return isFFLValid;
       
       case 'payment':
         return true; // Payment validation handled by PaymentForm
