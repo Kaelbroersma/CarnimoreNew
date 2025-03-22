@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { cartService } from '../services/cartService';
-import { productService } from '../services/productService';
+import { callNetlifyFunction } from '../lib/supabase';
 import { useAuthStore } from './authStore';
 
 export interface CartItem {
@@ -181,7 +181,7 @@ export const useCartStore = create<CartStore>()(
         try {
           // Get categories for all items
           const categoryPromises = items.map(async (item) => {
-            const result = await productService.getCategoryById(item.category_id);
+            const result = await callNetlifyFunction('getCategory', { productId: item.id });
             return result.data?.ffl_required || false;
           });
 
@@ -203,7 +203,7 @@ export const useCartStore = create<CartStore>()(
         try {
           // Get categories for all items
           const categoryPromises = items.map(async (item) => {
-            const result = await productService.getCategoryById(item.category_id);
+            const result = await callNetlifyFunction('getCategory', { productId: item.id });
             return result.data?.ffl_required || false;
           });
 
