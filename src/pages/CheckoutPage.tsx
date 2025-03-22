@@ -1,38 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '../store/authStore'; // Add auth store
 import { paymentService } from '../services/paymentService';
-import type { FFLDealer } from '../components/FFLDealerSearch/FFLDealerSearch';
+import PaymentProcessingModal from '../components/PaymentProcessingModal';
+import PaymentAuthModal from '../components/Payment/PaymentAuthModal'; // Add auth modal
+import { useOrderPolling } from '../hooks/useOrderPolling';
+import Button from '../components/Button';
 import CheckoutSteps from '../components/Checkout/CheckoutSteps';
 import CheckoutSection from '../components/Checkout/CheckoutSection';
 import OrderSummary from '../components/Checkout/OrderSummary';
 import ContactForm from '../components/Checkout/ContactForm';
 import ShippingForm from '../components/Checkout/ShippingForm';
-import { FFLDealerSearch } from '../components/FFLDealerSearch/FFLDealerSearch';
+import { FFLDealerSearch, type FFLDealer } from '../components/FFLDealerSearch/FFLDealerSearch';
 import PaymentForm from '../components/Payment/PaymentForm';
-import PaymentProcessingModal from '../components/PaymentProcessingModal';
 
 type CheckoutStep = 'contact' | 'shipping' | 'ffl' | 'payment';
-
-// Categories that require FFL transfer
-const FFL_REQUIRED_CATEGORIES = ['carnimore-models', 'barreled-actions', 'nfa'];
 
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { items, clearCart } = useCartStore();
-  const { user } = useAuthStore();
-
-  // State
-  const [currentStep, setCurrentStep] = useState<CheckoutStep>('contact');
+  const { user } = useAuthStore(); // Get user state
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'failed'>('pending');
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
   const [showProcessingModal, setShowProcessingModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false); // Add auth modal state
+  const [currentStep, setCurrentStep] = useState<CheckoutStep>('contact');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [completedSteps, setCompletedSteps] = useState<Set<CheckoutStep>>(new Set()); // Track completed steps
 
-  // Form Data
+  // Form states
   const [contactInfo, setContactInfo] = useState({
     firstName: user?.user_metadata?.first_name || '',
     lastName: user?.user_metadata?.last_name || '',
@@ -54,93 +54,127 @@ const CheckoutPage: React.FC = () => {
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
-  // Check if cart has items requiring FFL
-// Update the hasFirearms check to use the category's ffl_required flag
+  // Check if order requires FFL
   const hasFirearms = items.some(item => item.category?.ffl_required);
-
-// Update the hasNonFirearms check to use the category's ffl_required flag  
   const hasNonFirearms = items.some(item => !item.category?.ffl_required);
 
   // Define checkout steps based on cart contents
-  const getSteps = () => {
-    const steps = [
-      { id: 'contact', label: 'Contact', isActive: currentStep === 'contact', isComplete: currentStep !== 'contact' }
-    ];
-
-    // For firearm-only orders, go straight to FFL after contact
-    if (hasFirearms && !hasNonFirearms) {
-      steps.push(
-        { id: 'ffl', label: 'FFL Dealer', isActive: currentStep === 'ffl', isComplete: currentStep !== 'ffl' }
-      );
+  const steps = [
+    { 
+      id: 'contact', 
+      label: 'Contact', 
+      isActive: currentStep === 'contact', 
+      isComplete: completedSteps.has('contact')
+    },
+    ...(hasNonFirearms ? [{ 
+      id: 'shipping', 
+      label: 'Shipping', 
+      isActive: currentStep === 'shipping', 
+      isComplete: completedSteps.has('shipping')
+    }] : []),
+    ...(hasFirearms ? [{ 
+      id: 'ffl', 
+      label: 'FFL Dealer', 
+      isActive: currentStep === 'ffl', 
+      isComplete: completedSteps.has('ffl')
+    }] : []),
+    { 
+      id: 'payment', 
+      label: 'Payment', 
+      isActive: currentStep === 'payment', 
+      isComplete: completedSteps.has('payment')
     }
-    // For mixed orders or non-firearm orders, include shipping
-    else if (hasNonFirearms) {
-      steps.push(
-        { id: 'shipping', label: 'Shipping', isActive: currentStep === 'shipping', isComplete: currentStep !== 'shipping' }
-      );
-      // Add FFL step for mixed orders
-      if (hasFirearms) {
-        steps.push(
-          { id: 'ffl', label: 'FFL Dealer', isActive: currentStep === 'ffl', isComplete: currentStep !== 'ffl' }
-        );
+  ];
+
+  useOrderPolling({
+    orderId,
+    onStatusChange: (status, message) => {
+      setPaymentStatus(status);
+      if (message) {
+        setPaymentMessage(message);
       }
     }
+  });
 
-    // Always add payment as the last step
-    steps.push(
-      { id: 'payment', label: 'Payment', isActive: currentStep === 'payment', isComplete: false }
+  // Pre-fill form data if user is logged in
+  useEffect(() => {
+    if (user) {
+      setContactInfo({
+        firstName: user.user_metadata?.first_name || '',
+        lastName: user.user_metadata?.last_name || '',
+        email: user.email || '',
+        phone: ''
+      });
+    }
+  }, [user]);
+
+  // Handle empty cart
+  if (items.length === 0) {
+    return (
+      <div className="pt-24 pb-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="font-heading text-3xl md:text-4xl font-bold mb-6">Your Cart is Empty</h1>
+            <p className="text-gray-400 mb-8">Add some items to your cart before proceeding to checkout.</p>
+            <Button to="/shop" variant="primary">
+              Continue Shopping
+            </Button>
+          </div>
+        </div>
+      </div>
     );
+  }
 
-    return steps;
+  const markStepComplete = (step: CheckoutStep) => {
+    setCompletedSteps(prev => new Set([...prev, step]));
   };
 
-  // Redirect if cart is empty
-  useEffect(() => {
-    if (items.length === 0) {
-      navigate('/shop');
-    }
-  }, [items, navigate]);
-
   const handleContactSubmit = () => {
-    // For firearm-only orders, go straight to FFL
-    if (hasFirearms && !hasNonFirearms) {
+    markStepComplete('contact');
+    if (hasFirearms) {
       setCurrentStep('ffl');
-    }
-    // For mixed or non-firearm orders, go to shipping
-    else if (hasNonFirearms) {
+    } else if (hasNonFirearms) {
       setCurrentStep('shipping');
-    }
-    // If somehow neither (shouldn't happen), go to payment
-    else {
+    } else {
       setCurrentStep('payment');
     }
   };
 
   const handleShippingSubmit = () => {
-    // If order has firearms, go to FFL selection
-    if (hasFirearms) {
+    markStepComplete('shipping');
+    if (hasFirearms && !selectedFFL) {
       setCurrentStep('ffl');
-    }
-    // Otherwise go straight to payment
-    else {
+    } else {
       setCurrentStep('payment');
     }
   };
 
   const handleFFLSelect = (dealer: FFLDealer) => {
     setSelectedFFL(dealer);
-    setCurrentStep('payment');
+    markStepComplete('ffl');
+    if (hasNonFirearms && !shippingAddress.address) {
+      setCurrentStep('shipping');
+    } else {
+      setCurrentStep('payment');
+    }
   };
 
   const handlePaymentSubmit = async (paymentData: any) => {
-    setShowProcessingModal(true);
     setLoading(true);
     setError(null);
+    const newOrderId = crypto.randomUUID();
+    setOrderId(newOrderId);
 
     try {
+      // If not logged in, show auth modal
+      if (!user) {
+        setShowAuthModal(true);
+        return;
+      }
+
       const result = await paymentService.processPayment({
         ...paymentData,
-        orderId: crypto.randomUUID(),
+        orderId: newOrderId,
         amount: total,
         items,
         email: contactInfo.email,
@@ -150,38 +184,71 @@ const CheckoutPage: React.FC = () => {
       });
 
       if (result.error) {
-        throw result.error;
+        throw new Error(result.error.message);
       }
 
-      setOrderId(result.data?.orderId);
-      setPaymentStatus('pending');
-      setPaymentMessage(result.data?.message);
-
+      markStepComplete('payment');
+      setShowProcessingModal(true);
     } catch (error: any) {
-      console.error('Payment error:', error);
       setError(error.message);
-      setPaymentStatus('failed');
-      setPaymentMessage(error.message);
-    } finally {
       setLoading(false);
     }
   };
 
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    // Retry payment submission after successful auth
+    handlePaymentSubmit(paymentData);
+  };
+
   return (
     <div className="pt-24 pb-16">
+      <PaymentProcessingModal
+        isOpen={showProcessingModal}
+        orderId={orderId || ''}
+        status={paymentStatus}
+        message={paymentMessage || undefined}
+        onRetry={() => {
+          setShowProcessingModal(false);
+          setError(null);
+          setPaymentStatus('pending');
+          setPaymentMessage(null);
+        }}
+      />
+
+      <PaymentAuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+        orderId={orderId || ''}
+      />
+
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
-          {/* Checkout Steps */}
+          {error && (
+            <div className="bg-red-900/30 border border-red-700 rounded-sm p-4 mb-6 flex items-start">
+              <AlertCircle className="text-red-400 mr-2 flex-shrink-0 mt-0.5" size={16} />
+              <p className="text-red-300">{error}</p>
+            </div>
+          )}
+
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center text-gray-400 hover:text-tan transition-colors mb-8"
+          >
+            <ArrowLeft size={20} className="mr-2" />
+            Back
+          </button>
+
           <div className="mb-12">
-            <CheckoutSteps steps={getSteps()} />
+            <CheckoutSteps steps={steps} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Contact Information */}
-              <CheckoutSection 
-                title="Contact Information" 
+            <div className="lg:col-span-2">
+              <CheckoutSection
+                title="Contact Information"
                 isActive={currentStep === 'contact'}
               >
                 <ContactForm
@@ -192,7 +259,6 @@ const CheckoutPage: React.FC = () => {
                 />
               </CheckoutSection>
 
-              {/* Shipping Information */}
               {hasNonFirearms && (
                 <CheckoutSection
                   title="Shipping Information"
@@ -207,7 +273,6 @@ const CheckoutPage: React.FC = () => {
                 </CheckoutSection>
               )}
 
-              {/* FFL Dealer Selection */}
               {hasFirearms && (
                 <CheckoutSection
                   title="FFL Dealer Selection"
@@ -215,12 +280,11 @@ const CheckoutPage: React.FC = () => {
                 >
                   <FFLDealerSearch
                     onDealerSelect={handleFFLSelect}
-                    className="bg-transparent p-0"
+                    className="bg-transparent p-0 shadow-none"
                   />
                 </CheckoutSection>
               )}
 
-              {/* Payment Information */}
               <CheckoutSection
                 title="Payment Information"
                 isActive={currentStep === 'payment'}
@@ -242,20 +306,6 @@ const CheckoutPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Payment Processing Modal */}
-      <PaymentProcessingModal
-        isOpen={showProcessingModal}
-        orderId={orderId || ''}
-        status={paymentStatus}
-        message={paymentMessage}
-        onRetry={() => {
-          setShowProcessingModal(false);
-          setError(null);
-          setPaymentStatus('pending');
-          setPaymentMessage(null);
-        }}
-      />
     </div>
   );
 };

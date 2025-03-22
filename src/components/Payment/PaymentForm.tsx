@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CreditCard, Calendar as CalendarIcon, Lock, AlertCircle } from 'lucide-react';
 import Button from '../Button';
+import type { PaymentFormData } from '../../types/payment';
 
 interface PaymentFormProps {
-  onSubmit: (paymentData: any) => Promise<void>;
+  onSubmit: (paymentData: PaymentFormData) => Promise<void>;
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<PaymentFormData>({
     cardNumber: '',
     expiryMonth: '',
     expiryYear: '',

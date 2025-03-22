@@ -10,6 +10,11 @@ export interface CartItem {
   price: number;
   quantity: number;
   image: string;
+  category?: {
+    category_id: string;
+    name: string;
+    ffl_required: boolean;
+  };
   options?: {
     // Carnimore Models options
     caliber?: string;
