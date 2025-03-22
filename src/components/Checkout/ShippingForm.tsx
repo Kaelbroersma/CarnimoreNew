@@ -44,6 +44,15 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
     return true;
   };
 
+  const validateZipCode = (zip: string): boolean => {
+    if (!zip || !/^\d{5}$/.test(zip)) {
+      setZipError('Please enter a valid 5-digit ZIP code');
+      return false;
+    }
+    setZipError(null);
+    return true;
+  };
+
   const validateForm = (): boolean => {
     let isValid = true;
 
@@ -63,17 +72,14 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
     }
 
     // Validate ZIP code
-    if (!formData.zipCode?.trim() || !/^\d{5}$/.test(formData.zipCode)) {
-      setZipError('Please enter a valid 5-digit ZIP code');
+    if (!validateZipCode(formData.zipCode)) {
       isValid = false;
-    } else {
-      setZipError(null);
     }
 
     return isValid;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -87,6 +93,11 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
       state: formData.state.toUpperCase(),
       zipCode: formData.zipCode.trim()
     };
+
+    console.log('Submitting shipping form:', {
+      timestamp: new Date().toISOString(),
+      data: normalizedData
+    });
 
     onChange(normalizedData);
     onSubmit();
@@ -164,6 +175,9 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
             onChange={(e) => {
               const value = e.target.value.replace(/\D/g, '').slice(0, 5);
               onChange({ zipCode: value });
+              if (value.length === 5) {
+                validateZipCode(value);
+              }
             }}
             className={`w-full bg-dark-gray border ${zipError ? 'border-red-500' : 'border-gunmetal-light'} rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent`}
             autoComplete="postal-code"

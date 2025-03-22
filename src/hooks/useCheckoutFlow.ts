@@ -103,6 +103,11 @@ export const useCheckoutFlow = () => {
   };
 
   const markStepComplete = (step: CheckoutStep) => {
+    console.log('Marking step complete:', {
+      timestamp: new Date().toISOString(),
+      step,
+      nextStep: getNextStep(step)
+    });
     setCompletedSteps(prev => new Set([...prev, step]));
   };
 

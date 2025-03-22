@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
-import { useAuthStore } from '../store/authStore';
-import { paymentService } from '../services/paymentService';
 import { useCheckoutFlow } from '../hooks/useCheckoutFlow';
 import PaymentProcessingModal from '../components/PaymentProcessingModal';
 import PaymentAuthModal from '../components/Payment/PaymentAuthModal';
@@ -20,7 +18,6 @@ import PaymentForm from '../components/Payment/PaymentForm';
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { items, clearCart } = useCartStore();
-  const { user } = useAuthStore();
   const { 
     currentStep, 
     completedSteps,
@@ -43,15 +40,10 @@ const CheckoutPage: React.FC = () => {
   const [paymentData, setPaymentData] = useState<any>(null);
 
   useEffect(() => {
-    if (user) {
-      updateCheckoutData('contact', {
-        firstName: user.user_metadata?.first_name || '',
-        lastName: user.user_metadata?.last_name || '',
-        email: user.email || '',
-        phone: checkoutData.contact?.phone || ''
-      });
+    if (items.length === 0) {
+      navigate('/shop');
     }
-  }, [user]);
+  }, [items, navigate]);
 
   useOrderPolling({
     orderId,
@@ -63,33 +55,29 @@ const CheckoutPage: React.FC = () => {
     }
   });
 
-  if (items.length === 0) {
-    return (
-      <div className="pt-24 pb-16">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto text-center">
-            <h1 className="font-heading text-3xl md:text-4xl font-bold mb-6">Your Cart is Empty</h1>
-            <p className="text-gray-400 mb-8">Add some items to your cart before proceeding to checkout.</p>
-            <Button to="/shop" variant="primary">
-              Continue Shopping
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const handleContactSubmit = (data: any) => {
+    console.log('Contact form submitted:', {
+      timestamp: new Date().toISOString(),
+      data
+    });
     updateCheckoutData('contact', data);
     goToNextStep();
   };
 
   const handleShippingSubmit = (data: any) => {
+    console.log('Shipping form submitted:', {
+      timestamp: new Date().toISOString(),
+      data
+    });
     updateCheckoutData('shipping', data);
     goToNextStep();
   };
 
   const handleFFLSelect = (dealer: FFLDealer) => {
+    console.log('FFL dealer selected:', {
+      timestamp: new Date().toISOString(),
+      dealer
+    });
     updateCheckoutData('ffl', dealer);
     goToNextStep();
   };
@@ -137,6 +125,22 @@ const CheckoutPage: React.FC = () => {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
+
+  if (items.length === 0) {
+    return (
+      <div className="pt-24 pb-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="font-heading text-3xl md:text-4xl font-bold mb-6">Your Cart is Empty</h1>
+            <p className="text-gray-400 mb-8">Add some items to your cart before proceeding to checkout.</p>
+            <Button to="/shop" variant="primary">
+              Continue Shopping
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-24 pb-16">
