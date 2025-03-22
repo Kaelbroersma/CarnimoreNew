@@ -660,31 +660,44 @@ export const handler: Handler = async (event) => {
             categoryId: payload.categoryId
           });
 
-          const { data: category, error: categoryError } = await supabase
-            .from('categories')
-            .select('*')
-            .eq('category_id', payload.categoryId)
+          // First get the product to ensure it exists
+          const { data: product, error: productError } = await supabase
+            .from('products')
+            .select(`
+              category:categories (
+                category_id,
+                name,
+                description,
+                category_status,
+                ffl_required
+              )
+            `)
+            .eq('product_id', payload.categoryId)
             .single();
 
-          if (categoryError) {
-            console.error('Error fetching category:', {
+          if (productError) {
+            console.error('Error fetching product:', {
               timestamp: new Date().toISOString(),
-              error: categoryError,
+              error: productError,
               categoryId: payload.categoryId
             });
-            throw categoryError;
+            throw productError;
+          }
+
+          if (!product?.category) {
+            throw new Error('Category not found');
           }
 
           console.log('Category fetched:', {
             timestamp: new Date().toISOString(),
             categoryId: payload.categoryId,
-            category
+            category: product.category
           });
 
           return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ data: category })
+            body: JSON.stringify({ data: product.category })
           };
         } catch (error: any) {
           console.error('Error in getCategory:', {

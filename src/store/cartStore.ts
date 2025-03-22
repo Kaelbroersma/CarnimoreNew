@@ -180,16 +180,15 @@ export const useCartStore = create<CartStore>()(
 
         try {
           // Get categories for all items
-          const categoryPromises = items.map(item => 
-            productService.getCategoryById(item.category_id)
-          );
+          const categoryPromises = items.map(async (item) => {
+            const result = await productService.getCategoryById(item.category_id);
+            return result.data?.ffl_required || false;
+          });
 
           const categoryResults = await Promise.all(categoryPromises);
           
           // Check if any category requires FFL
-          return categoryResults.some(result => 
-            result.data?.ffl_required === true
-          );
+          return categoryResults.some(required => required === true);
         } catch (error) {
           console.error('Error checking FFL requirement:', error);
           return false;
@@ -203,16 +202,15 @@ export const useCartStore = create<CartStore>()(
 
         try {
           // Get categories for all items
-          const categoryPromises = items.map(item => 
-            productService.getCategoryById(item.category_id)
-          );
+          const categoryPromises = items.map(async (item) => {
+            const result = await productService.getCategoryById(item.category_id);
+            return result.data?.ffl_required || false;
+          });
 
           const categoryResults = await Promise.all(categoryPromises);
           
           // Check if any category does not require FFL
-          return categoryResults.some(result => 
-            result.data?.ffl_required === false
-          );
+          return categoryResults.some(required => required === false);
         } catch (error) {
           console.error('Error checking non-FFL items:', error);
           return false;
