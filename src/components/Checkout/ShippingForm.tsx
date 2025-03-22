@@ -32,7 +32,8 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
     'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
   ];
 
-  const validateState = (state: string) => {
+  const validateState = (state: string): boolean => {
+    if (!state) return false;
     const upperState = state.toUpperCase();
     if (!US_STATES.includes(upperState)) {
       setStateError('Please enter a valid 2-letter state abbreviation (e.g., AZ for Arizona)');
@@ -48,15 +49,29 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
       onChange({ state: value });
       if (value.length === 2) {
         validateState(value);
+      } else {
+        setStateError(null);
       }
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all required fields
+    if (!formData.address.trim()) {
+      return;
+    }
+    if (!formData.city.trim()) {
+      return;
+    }
     if (!validateState(formData.state)) {
       return;
     }
+    if (!formData.zipCode.trim() || !/^\d{5}$/.test(formData.zipCode)) {
+      return;
+    }
+
     onSubmit();
   };
 
@@ -120,7 +135,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
             maxLength={5}
             pattern="[0-9]{5}"
             value={formData.zipCode}
-            onChange={(e) => onChange({ zipCode: e.target.value.slice(0, 5) })}
+            onChange={(e) => onChange({ zipCode: e.target.value.replace(/\D/g, '').slice(0, 5) })}
             className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
           />
         </div>

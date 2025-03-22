@@ -15,6 +15,9 @@ import PaymentProcessingModal from '../components/PaymentProcessingModal';
 
 type CheckoutStep = 'contact' | 'shipping' | 'ffl' | 'payment';
 
+// Categories that require FFL transfer
+const FFL_REQUIRED_CATEGORIES = ['carnimore-models', 'barreled-actions', 'nfa'];
+
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { items, clearCart } = useCartStore();
@@ -51,25 +54,45 @@ const CheckoutPage: React.FC = () => {
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
-  // Check if cart has firearms
-  const hasFirearms = items.some(item => 
-    item.id.startsWith('CM') || // Carnimore Models
-    item.id.startsWith('BA')    // Barreled Actions
-  );
+  // Check if cart has items requiring FFL
+// Update the hasFirearms check to use the category's ffl_required flag
+  const hasFirearms = items.some(item => item.category?.ffl_required);
 
-  // Check if cart has non-firearm items
-  const hasNonFirearms = items.some(item => 
-    !item.id.startsWith('CM') && 
-    !item.id.startsWith('BA')
-  );
+// Update the hasNonFirearms check to use the category's ffl_required flag  
+  const hasNonFirearms = items.some(item => !item.category?.ffl_required);
 
   // Define checkout steps based on cart contents
-  const steps = [
-    { id: 'contact', label: 'Contact', isActive: currentStep === 'contact', isComplete: currentStep !== 'contact' },
-    ...(hasNonFirearms ? [{ id: 'shipping', label: 'Shipping', isActive: currentStep === 'shipping', isComplete: currentStep !== 'shipping' }] : []),
-    ...(hasFirearms ? [{ id: 'ffl', label: 'FFL Dealer', isActive: currentStep === 'ffl', isComplete: currentStep !== 'ffl' }] : []),
-    { id: 'payment', label: 'Payment', isActive: currentStep === 'payment', isComplete: false }
-  ];
+  const getSteps = () => {
+    const steps = [
+      { id: 'contact', label: 'Contact', isActive: currentStep === 'contact', isComplete: currentStep !== 'contact' }
+    ];
+
+    // For firearm-only orders, go straight to FFL after contact
+    if (hasFirearms && !hasNonFirearms) {
+      steps.push(
+        { id: 'ffl', label: 'FFL Dealer', isActive: currentStep === 'ffl', isComplete: currentStep !== 'ffl' }
+      );
+    }
+    // For mixed orders or non-firearm orders, include shipping
+    else if (hasNonFirearms) {
+      steps.push(
+        { id: 'shipping', label: 'Shipping', isActive: currentStep === 'shipping', isComplete: currentStep !== 'shipping' }
+      );
+      // Add FFL step for mixed orders
+      if (hasFirearms) {
+        steps.push(
+          { id: 'ffl', label: 'FFL Dealer', isActive: currentStep === 'ffl', isComplete: currentStep !== 'ffl' }
+        );
+      }
+    }
+
+    // Always add payment as the last step
+    steps.push(
+      { id: 'payment', label: 'Payment', isActive: currentStep === 'payment', isComplete: false }
+    );
+
+    return steps;
+  };
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -79,19 +102,27 @@ const CheckoutPage: React.FC = () => {
   }, [items, navigate]);
 
   const handleContactSubmit = () => {
-    if (hasNonFirearms) {
-      setCurrentStep('shipping');
-    } else if (hasFirearms) {
+    // For firearm-only orders, go straight to FFL
+    if (hasFirearms && !hasNonFirearms) {
       setCurrentStep('ffl');
-    } else {
+    }
+    // For mixed or non-firearm orders, go to shipping
+    else if (hasNonFirearms) {
+      setCurrentStep('shipping');
+    }
+    // If somehow neither (shouldn't happen), go to payment
+    else {
       setCurrentStep('payment');
     }
   };
 
   const handleShippingSubmit = () => {
+    // If order has firearms, go to FFL selection
     if (hasFirearms) {
       setCurrentStep('ffl');
-    } else {
+    }
+    // Otherwise go straight to payment
+    else {
       setCurrentStep('payment');
     }
   };
@@ -142,7 +173,7 @@ const CheckoutPage: React.FC = () => {
         <div className="max-w-6xl mx-auto">
           {/* Checkout Steps */}
           <div className="mb-12">
-            <CheckoutSteps steps={steps} />
+            <CheckoutSteps steps={getSteps()} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
