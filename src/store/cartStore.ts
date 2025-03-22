@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { cartService } from '../services/cartService';
+import { productService } from '../services/productService';
 import { useAuthStore } from './authStore';
 
 export interface CartItem {
@@ -9,11 +10,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   image: string;
-  category: {
-    category_id: string;
-    name: string;
-    ffl_required: boolean;
-  };
+  category_id: string;
   options?: {
     // Carnimore Models options
     caliber?: string;
@@ -43,8 +40,8 @@ interface CartStore {
   syncWithDatabase: () => Promise<void>;
   mergeGuestCart: () => Promise<void>;
   getCartTotal: () => number;
-  requiresFFL: () => boolean;
-  hasNonFFLItems: () => boolean;
+  requiresFFL: () => Promise<boolean>;
+  hasNonFFLItems: () => Promise<boolean>;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -177,17 +174,49 @@ export const useCartStore = create<CartStore>()(
       },
 
       // Check if any items require FFL based on category
-      requiresFFL: () => {
-        return get().items.some(item => 
-          item.category?.ffl_required === true
-        );
+      requiresFFL: async () => {
+        const items = get().items;
+        if (items.length === 0) return false;
+
+        try {
+          // Get categories for all items
+          const categoryPromises = items.map(item => 
+            productService.getCategoryById(item.category_id)
+          );
+
+          const categoryResults = await Promise.all(categoryPromises);
+          
+          // Check if any category requires FFL
+          return categoryResults.some(result => 
+            result.data?.ffl_required === true
+          );
+        } catch (error) {
+          console.error('Error checking FFL requirement:', error);
+          return false;
+        }
       },
 
       // Check if there are any non-FFL items
-      hasNonFFLItems: () => {
-        return get().items.some(item => 
-          !item.category?.ffl_required
-        );
+      hasNonFFLItems: async () => {
+        const items = get().items;
+        if (items.length === 0) return false;
+
+        try {
+          // Get categories for all items
+          const categoryPromises = items.map(item => 
+            productService.getCategoryById(item.category_id)
+          );
+
+          const categoryResults = await Promise.all(categoryPromises);
+          
+          // Check if any category does not require FFL
+          return categoryResults.some(result => 
+            result.data?.ffl_required === false
+          );
+        } catch (error) {
+          console.error('Error checking non-FFL items:', error);
+          return false;
+        }
       }
     }),
     {

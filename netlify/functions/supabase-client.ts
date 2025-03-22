@@ -649,6 +649,60 @@ export const handler: Handler = async (event) => {
           };
         }
 
+      case 'getCategory':
+        try {
+          if (!payload.categoryId) {
+            throw new Error('Missing categoryId parameter');
+          }
+
+          console.log('Fetching category:', {
+            timestamp: new Date().toISOString(),
+            categoryId: payload.categoryId
+          });
+
+          const { data: category, error: categoryError } = await supabase
+            .from('categories')
+            .select('*')
+            .eq('category_id', payload.categoryId)
+            .single();
+
+          if (categoryError) {
+            console.error('Error fetching category:', {
+              timestamp: new Date().toISOString(),
+              error: categoryError,
+              categoryId: payload.categoryId
+            });
+            throw categoryError;
+          }
+
+          console.log('Category fetched:', {
+            timestamp: new Date().toISOString(),
+            categoryId: payload.categoryId,
+            category
+          });
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ data: category })
+          };
+        } catch (error: any) {
+          console.error('Error in getCategory:', {
+            timestamp: new Date().toISOString(),
+            error: error.message
+          });
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: { 
+                message: 'Failed to fetch category',
+                details: error.message
+              }
+            })
+          };
+        }
+
       default:
         return {
           statusCode: 400,

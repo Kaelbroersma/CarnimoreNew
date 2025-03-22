@@ -4,6 +4,7 @@ import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { paymentService } from '../services/paymentService';
+import { useCheckoutFlow } from '../hooks/useCheckoutFlow';
 import PaymentProcessingModal from '../components/PaymentProcessingModal';
 import PaymentAuthModal from '../components/Payment/PaymentAuthModal';
 import { useOrderPolling } from '../hooks/useOrderPolling';
@@ -16,21 +17,25 @@ import ShippingForm from '../components/Checkout/ShippingForm';
 import { FFLDealerSearch, type FFLDealer } from '../components/FFLDealerSearch/FFLDealerSearch';
 import PaymentForm from '../components/Payment/PaymentForm';
 
-type CheckoutStep = 'contact' | 'shipping' | 'ffl' | 'payment';
-
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { items, clearCart, requiresFFL, hasNonFFLItems } = useCartStore();
   const { user } = useAuthStore();
+  const { 
+    currentStep, 
+    completedSteps, 
+    loading: flowLoading, 
+    error: flowError,
+    goToNextStep 
+  } = useCheckoutFlow();
+
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'failed'>('pending');
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
   const [showProcessingModal, setShowProcessingModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [currentStep, setCurrentStep] = useState<CheckoutStep>('contact');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [completedSteps, setCompletedSteps] = useState<Set<CheckoutStep>>(new Set());
   const [paymentData, setPaymentData] = useState<any>(null);
 
   const [contactInfo, setContactInfo] = useState({
@@ -52,36 +57,6 @@ const CheckoutPage: React.FC = () => {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
-
-  const needsFFL = requiresFFL();
-  const needsShipping = hasNonFFLItems();
-
-  const steps = [
-    { 
-      id: 'contact', 
-      label: 'Contact', 
-      isActive: currentStep === 'contact', 
-      isComplete: completedSteps.has('contact')
-    },
-    ...(needsFFL ? [{ 
-      id: 'ffl', 
-      label: 'FFL Dealer', 
-      isActive: currentStep === 'ffl', 
-      isComplete: completedSteps.has('ffl')
-    }] : []),
-    ...(needsShipping ? [{ 
-      id: 'shipping', 
-      label: 'Shipping', 
-      isActive: currentStep === 'shipping', 
-      isComplete: completedSteps.has('shipping')
-    }] : []),
-    { 
-      id: 'payment', 
-      label: 'Payment', 
-      isActive: currentStep === 'payment', 
-      isComplete: completedSteps.has('payment')
-    }
-  ];
 
   useOrderPolling({
     orderId,
@@ -120,34 +95,17 @@ const CheckoutPage: React.FC = () => {
     );
   }
 
-  const markStepComplete = (step: CheckoutStep) => {
-    setCompletedSteps(prev => new Set([...prev, step]));
-  };
-
   const handleContactSubmit = () => {
-    markStepComplete('contact');
-    if (needsFFL) {
-      setCurrentStep('ffl');
-    } else if (needsShipping) {
-      setCurrentStep('shipping');
-    } else {
-      setCurrentStep('payment');
-    }
+    goToNextStep();
   };
 
   const handleShippingSubmit = () => {
-    markStepComplete('shipping');
-    setCurrentStep('payment');
+    goToNextStep();
   };
 
   const handleFFLSelect = (dealer: FFLDealer) => {
     setSelectedFFL(dealer);
-    markStepComplete('ffl');
-    if (needsShipping) {
-      setCurrentStep('shipping');
-    } else {
-      setCurrentStep('payment');
-    }
+    goToNextStep();
   };
 
   const handlePaymentSubmit = async (paymentData: any) => {
@@ -162,6 +120,9 @@ const CheckoutPage: React.FC = () => {
         setShowAuthModal(true);
         return;
       }
+
+      const needsFFL = await requiresFFL();
+      const needsShipping = await hasNonFFLItems();
 
       const result = await paymentService.processPayment({
         ...paymentData,
@@ -178,7 +139,6 @@ const CheckoutPage: React.FC = () => {
         throw new Error(result.error.message);
       }
 
-      markStepComplete('payment');
       setShowProcessingModal(true);
     } catch (error: any) {
       setError(error.message);
@@ -215,10 +175,10 @@ const CheckoutPage: React.FC = () => {
 
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
-          {error && (
+          {(error || flowError) && (
             <div className="bg-red-900/30 border border-red-700 rounded-sm p-4 mb-6 flex items-start">
               <AlertCircle className="text-red-400 mr-2 flex-shrink-0 mt-0.5" size={16} />
-              <p className="text-red-300">{error}</p>
+              <p className="text-red-300">{error || flowError}</p>
             </div>
           )}
 
@@ -231,7 +191,34 @@ const CheckoutPage: React.FC = () => {
           </button>
 
           <div className="mb-12">
-            <CheckoutSteps steps={steps} />
+            <CheckoutSteps
+              steps={[
+                { 
+                  id: 'contact', 
+                  label: 'Contact', 
+                  isActive: currentStep === 'contact', 
+                  isComplete: completedSteps.has('contact')
+                },
+                ...(requiresFFL() ? [{ 
+                  id: 'ffl', 
+                  label: 'FFL Dealer', 
+                  isActive: currentStep === 'ffl', 
+                  isComplete: completedSteps.has('ffl')
+                }] : []),
+                ...(hasNonFFLItems() ? [{ 
+                  id: 'shipping', 
+                  label: 'Shipping', 
+                  isActive: currentStep === 'shipping', 
+                  isComplete: completedSteps.has('shipping')
+                }] : []),
+                { 
+                  id: 'payment', 
+                  label: 'Payment', 
+                  isActive: currentStep === 'payment', 
+                  isComplete: completedSteps.has('payment')
+                }
+              ]}
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -248,7 +235,7 @@ const CheckoutPage: React.FC = () => {
                 />
               </CheckoutSection>
 
-              {needsFFL && (
+              {requiresFFL() && (
                 <CheckoutSection
                   title="FFL Dealer Selection"
                   isActive={currentStep === 'ffl'}
@@ -260,7 +247,7 @@ const CheckoutPage: React.FC = () => {
                 </CheckoutSection>
               )}
 
-              {needsShipping && (
+              {hasNonFFLItems() && (
                 <CheckoutSection
                   title="Shipping Information"
                   isActive={currentStep === 'shipping'}

@@ -6,6 +6,7 @@ export interface Category {
   category_status: 'active' | 'inactive';
   created_at: string;
   slug: string;
+  ffl_required: boolean;
 }
 
 export interface Product {
@@ -15,6 +16,7 @@ export interface Product {
   price: number;
   stock_quantity: number;
   category_id: string;
+  category?: Category;
   brand: string | null;
   product_status: 'available' | 'out of stock' | 'discontinued';
   added_date: string;

@@ -73,5 +73,25 @@ export const productService = {
         }
       };
     }
+  },
+
+  async getCategoryById(categoryId: string): Promise<Result<Category>> {
+    try {
+      const result = await callNetlifyFunction('getCategory', { categoryId });
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return { data: result.data, error: null };
+    } catch (error: any) {
+      return {
+        data: null,
+        error: {
+          message: 'Failed to fetch category',
+          details: error.message
+        }
+      };
+    }
   }
 };
