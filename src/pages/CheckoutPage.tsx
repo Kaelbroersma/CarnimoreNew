@@ -10,7 +10,7 @@ import PaymentAuthModal from '../components/Payment/PaymentAuthModal';
 import { useOrderPolling } from '../hooks/useOrderPolling';
 import Button from '../components/Button';
 import CheckoutSteps from '../components/Checkout/CheckoutSteps';
-import CheckoutBreadcrumbs from '../components/Checkout/CheckoutBreadcrumbs';
+import CheckoutBreadcrumbs from '../components/Checkout/CheckoutBreadCrumbs';
 import CheckoutSection from '../components/Checkout/CheckoutSection';
 import OrderSummary from '../components/Checkout/OrderSummary';
 import ContactForm from '../components/Checkout/ContactForm';
