@@ -23,7 +23,8 @@ const CheckoutPage: React.FC = () => {
   const { user } = useAuthStore();
   const { 
     currentStep, 
-    completedSteps, 
+    completedSteps,
+    availableSteps, 
     loading: flowLoading, 
     error: flowError,
     goToNextStep 
@@ -192,32 +193,12 @@ const CheckoutPage: React.FC = () => {
 
           <div className="mb-12">
             <CheckoutSteps
-              steps={[
-                { 
-                  id: 'contact', 
-                  label: 'Contact', 
-                  isActive: currentStep === 'contact', 
-                  isComplete: completedSteps.has('contact')
-                },
-                ...(requiresFFL() ? [{ 
-                  id: 'ffl', 
-                  label: 'FFL Dealer', 
-                  isActive: currentStep === 'ffl', 
-                  isComplete: completedSteps.has('ffl')
-                }] : []),
-                ...(hasNonFFLItems() ? [{ 
-                  id: 'shipping', 
-                  label: 'Shipping', 
-                  isActive: currentStep === 'shipping', 
-                  isComplete: completedSteps.has('shipping')
-                }] : []),
-                { 
-                  id: 'payment', 
-                  label: 'Payment', 
-                  isActive: currentStep === 'payment', 
-                  isComplete: completedSteps.has('payment')
-                }
-              ]}
+              steps={availableSteps.map(step => ({
+                id: step,
+                label: step === 'ffl' ? 'FFL Dealer' : step.charAt(0).toUpperCase() + step.slice(1),
+                isActive: currentStep === step,
+                isComplete: completedSteps.has(step)
+              }))}
             />
           </div>
 
@@ -235,7 +216,7 @@ const CheckoutPage: React.FC = () => {
                 />
               </CheckoutSection>
 
-              {requiresFFL() && (
+              {availableSteps.includes('ffl') && (
                 <CheckoutSection
                   title="FFL Dealer Selection"
                   isActive={currentStep === 'ffl'}
@@ -247,7 +228,7 @@ const CheckoutPage: React.FC = () => {
                 </CheckoutSection>
               )}
 
-              {hasNonFFLItems() && (
+              {availableSteps.includes('shipping') && (
                 <CheckoutSection
                   title="Shipping Information"
                   isActive={currentStep === 'shipping'}

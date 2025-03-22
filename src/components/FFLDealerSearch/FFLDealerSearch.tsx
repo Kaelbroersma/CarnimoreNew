@@ -1,28 +1,7 @@
 import React, { useState } from 'react';
 import { Search, MapPin, Phone, Store, AlertCircle } from 'lucide-react';
-import { callNetlifyFunction } from '../../lib/supabase';
-import Button from '../Button';
-
-export interface FFLDealer {
-  LIC_REGN: string;
-  LIC_DIST: string;
-  LIC_CNTY: string;
-  LIC_TYPE: string;
-  LIC_XPRDTE: string;
-  LIC_SEQN: string;
-  LICENSE_NAME: string;
-  BUSINESS_NAME: string;
-  PREMISE_STREET: string;
-  PREMISE_CITY: string;
-  PREMISE_STATE: string;
-  PREMISE_ZIP_CODE: string;
-  MAIL_STREET: string;
-  MAIL_CITY: string;
-  MAIL_STATE: string;
-  MAIL_ZIP_CODE: string;
-  VOICE_PHONE: string;
-  distance?: number;
-}
+import { fflService } from '../../services/fflService';
+import type { FFLDealer } from '../../types/payment';
 
 interface FFLDealerSearchProps {
   onDealerSelect: (dealer: FFLDealer) => void;
@@ -40,7 +19,7 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
     setLoading(true);
     setError(null);
     try {
-      const result = await callNetlifyFunction('searchFFLDealers', { zipCode: zip });
+      const result = await fflService.searchDealers(zip);
 
       if (result.error) {
         throw new Error(result.error.message);
@@ -155,11 +134,6 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
                     {dealer.VOICE_PHONE}
                   </p>
                 </div>
-                {dealer.distance && (
-                  <span className="text-tan font-medium">
-                    {dealer.distance.toFixed(1)} miles
-                  </span>
-                )}
               </div>
               <div className="mt-2 text-sm text-gray-500">
                 License: {dealer.LIC_SEQN}
@@ -182,3 +156,5 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
     </div>
   );
 }
+
+export type { FFLDealer };

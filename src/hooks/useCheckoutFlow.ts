@@ -4,9 +4,10 @@ import { useCartStore } from '../store/cartStore';
 type CheckoutStep = 'contact' | 'shipping' | 'ffl' | 'payment';
 
 export const useCheckoutFlow = () => {
-  const { items, requiresFFL, hasNonFFLItems } = useCartStore();
+  const { items } = useCartStore();
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('contact');
   const [completedSteps, setCompletedSteps] = useState<Set<CheckoutStep>>(new Set());
+  const [availableSteps, setAvailableSteps] = useState<CheckoutStep[]>(['contact']);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,15 +15,32 @@ export const useCheckoutFlow = () => {
     const initializeFlow = async () => {
       try {
         setLoading(true);
+        const { requiresFFL, hasNonFFLItems } = useCartStore.getState();
+        
         const needsFFL = await requiresFFL();
         const needsShipping = await hasNonFFLItems();
 
-        // Define available steps based on cart contents
+        // Define steps based on cart contents
         const steps: CheckoutStep[] = ['contact'];
-        if (needsFFL) steps.push('ffl');
-        if (needsShipping) steps.push('shipping');
-        steps.push('payment');
+        
+        // For firearm-only orders: contact -> ffl -> payment
+        if (needsFFL && !needsShipping) {
+          steps.push('ffl', 'payment');
+        }
+        // For mixed orders: contact -> shipping -> ffl -> payment
+        else if (needsFFL && needsShipping) {
+          steps.push('shipping', 'ffl', 'payment');
+        }
+        // For non-firearm orders: contact -> shipping -> payment
+        else if (!needsFFL && needsShipping) {
+          steps.push('shipping', 'payment');
+        }
+        // For edge cases: contact -> payment
+        else {
+          steps.push('payment');
+        }
 
+        setAvailableSteps(steps);
         setCurrentStep('contact');
         setCompletedSteps(new Set());
         setError(null);
@@ -36,30 +54,20 @@ export const useCheckoutFlow = () => {
     initializeFlow();
   }, [items]);
 
-  const getNextStep = async (currentStep: CheckoutStep): Promise<CheckoutStep | null> => {
-    const needsFFL = await requiresFFL();
-    const needsShipping = await hasNonFFLItems();
-
-    switch (currentStep) {
-      case 'contact':
-        return needsFFL ? 'ffl' : needsShipping ? 'shipping' : 'payment';
-      case 'ffl':
-        return needsShipping ? 'shipping' : 'payment';
-      case 'shipping':
-        return 'payment';
-      case 'payment':
-        return null;
-      default:
-        return null;
+  const getNextStep = (current: CheckoutStep): CheckoutStep | null => {
+    const currentIndex = availableSteps.indexOf(current);
+    if (currentIndex === -1 || currentIndex === availableSteps.length - 1) {
+      return null;
     }
+    return availableSteps[currentIndex + 1];
   };
 
   const markStepComplete = (step: CheckoutStep) => {
     setCompletedSteps(prev => new Set([...prev, step]));
   };
 
-  const goToNextStep = async () => {
-    const nextStep = await getNextStep(currentStep);
+  const goToNextStep = () => {
+    const nextStep = getNextStep(currentStep);
     if (nextStep) {
       markStepComplete(currentStep);
       setCurrentStep(nextStep);
@@ -69,6 +77,7 @@ export const useCheckoutFlow = () => {
   return {
     currentStep,
     completedSteps,
+    availableSteps,
     loading,
     error,
     markStepComplete,
