@@ -6,9 +6,11 @@ import { useAuthStore } from '../store/authStore';
 import { paymentService } from '../services/paymentService';
 import { useCheckoutFlow } from '../hooks/useCheckoutFlow';
 import PaymentProcessingModal from '../components/PaymentProcessingModal';
+import PaymentAuthModal from '../components/Payment/PaymentAuthModal';
 import { useOrderPolling } from '../hooks/useOrderPolling';
 import Button from '../components/Button';
 import CheckoutSteps from '../components/Checkout/CheckoutSteps';
+import CheckoutBreadcrumbs from '../components/Checkout/CheckoutBreadcrumbs';
 import CheckoutSection from '../components/Checkout/CheckoutSection';
 import OrderSummary from '../components/Checkout/OrderSummary';
 import ContactForm from '../components/Checkout/ContactForm';
@@ -29,7 +31,8 @@ const CheckoutPage: React.FC = () => {
     error: flowError,
     goToNextStep,
     updateCheckoutData,
-    validateStep
+    validateStep,
+    setCurrentStep
   } = useCheckoutFlow();
 
   // Initialize all form states
@@ -47,8 +50,15 @@ const CheckoutPage: React.FC = () => {
     zipCode: ''
   });
 
-  const [fflData, setFflData] = useState<FFLDealer | null>(null);
+  const [billingData, setBillingData] = useState({
+    address: '',
+    city: '',
+    state: '',
+    zipCode: ''
+  });
 
+  const [fflData, setFflData] = useState<FFLDealer | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'failed'>('pending');
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
@@ -76,6 +86,23 @@ const CheckoutPage: React.FC = () => {
       setPaymentStatus(status);
       if (message) {
         setPaymentMessage(message);
+      }
+
+      if (status === 'paid') {
+        clearCart();
+        navigate('/payment/success', { 
+          state: { 
+            orderId,
+            message: message || 'Payment successful'
+          }
+        });
+      } else if (status === 'failed') {
+        navigate('/payment/error', {
+          state: {
+            orderId,
+            message: message || 'Payment failed'
+          }
+        });
       }
     }
   });
@@ -111,6 +138,10 @@ const CheckoutPage: React.FC = () => {
       data: shippingData
     });
     updateCheckoutData('shipping', shippingData);
+
+    // Pre-fill billing address with shipping address
+    setBillingData(shippingData);
+    
     goToNextStep();
   };
 
@@ -135,6 +166,21 @@ const CheckoutPage: React.FC = () => {
       const tax = subtotal * 0.08;
       const total = subtotal + tax;
 
+      // If user is not logged in, show auth modal
+      if (!user) {
+        setShowAuthModal(true);
+        return;
+      }
+
+      console.log('Processing payment with data:', {
+        timestamp: new Date().toISOString(),
+        contactData,
+        shippingData,
+        billingData,
+        fflData,
+        orderId: newOrderId
+      });
+
       const paymentData = {
         ...formData,
         orderId: newOrderId,
@@ -148,15 +194,9 @@ const CheckoutPage: React.FC = () => {
         email: contactData.email,
         phone: contactData.phone,
         shippingAddress: shippingData,
+        billingAddress: formData.billingAddress,
         fflDealerInfo: fflData
       };
-
-      console.log('Processing payment:', {
-        timestamp: new Date().toISOString(),
-        orderId: newOrderId,
-        total,
-        itemCount: items.length
-      });
 
       const result = await paymentService.processPayment(paymentData);
 
@@ -176,12 +216,19 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    // Re-attempt payment now that user is authenticated
+    handlePaymentSubmit(checkoutData.payment);
+  };
+
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
   return (
     <div className="pt-24 pb-16">
+      {/* Processing Modal */}
       <PaymentProcessingModal
         isOpen={showProcessingModal}
         orderId={orderId || ''}
@@ -193,6 +240,14 @@ const CheckoutPage: React.FC = () => {
           setPaymentStatus('pending');
           setPaymentMessage(null);
         }}
+      />
+
+      {/* Auth Modal */}
+      <PaymentAuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+        orderId={orderId || ''}
       />
 
       <div className="container mx-auto px-4">
@@ -213,13 +268,11 @@ const CheckoutPage: React.FC = () => {
           </button>
 
           <div className="mb-12">
-            <CheckoutSteps
-              steps={availableSteps.map(step => ({
-                id: step,
-                label: step === 'ffl' ? 'FFL Dealer' : step.charAt(0).toUpperCase() + step.slice(1),
-                isActive: currentStep === step,
-                isComplete: completedSteps.has(step)
-              }))}
+            <CheckoutBreadcrumbs
+              steps={availableSteps}
+              currentStep={currentStep}
+              completedSteps={completedSteps}
+              onStepClick={setCurrentStep}
             />
           </div>
 
@@ -267,7 +320,11 @@ const CheckoutPage: React.FC = () => {
                 title="Payment Information"
                 isActive={currentStep === 'payment'}
               >
-                <PaymentForm onSubmit={handlePaymentSubmit} />
+                <PaymentForm 
+                  onSubmit={handlePaymentSubmit}
+                  initialBillingAddress={billingData}
+                  onBillingAddressChange={setBillingData}
+                />
               </CheckoutSection>
             </div>
 

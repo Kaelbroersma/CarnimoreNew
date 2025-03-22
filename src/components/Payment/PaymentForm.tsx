@@ -1,27 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CreditCard, Calendar as CalendarIcon, Lock, AlertCircle, MapPin } from 'lucide-react';
 import Button from '../Button';
 import type { PaymentFormData } from '../../types/payment';
 
 interface PaymentFormProps {
-  onSubmit: (paymentData: PaymentFormData) => Promise<void>;
+  onSubmit: (formData: PaymentFormData) => Promise<void>;
+  initialBillingAddress?: {
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  onBillingAddressChange?: (address: {
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  }) => void;
 }
 
-const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
+const PaymentForm: React.FC<PaymentFormProps> = ({ 
+  onSubmit,
+  initialBillingAddress,
+  onBillingAddressChange
+}) => {
   const [formData, setFormData] = useState<PaymentFormData>({
     cardNumber: '',
     expiryMonth: '',
     expiryYear: '',
     cvv: '',
     nameOnCard: '',
-    billingAddress: {
+    billingAddress: initialBillingAddress || {
       address: '',
       city: '',
       state: '',
       zipCode: ''
     }
   });
+
+  // Update billing address when initialBillingAddress changes
+  useEffect(() => {
+    if (initialBillingAddress) {
+      setFormData(prev => ({
+        ...prev,
+        billingAddress: initialBillingAddress
+      }));
+    }
+  }, [initialBillingAddress]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stateError, setStateError] = useState<string | null>(null);
@@ -71,7 +98,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
     try {
       // Validate required fields
@@ -128,7 +154,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
       });
     } catch (error: any) {
       setError(error.message || 'Failed to process payment');
-      setLoading(false);
     }
   };
 
@@ -146,6 +171,23 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
       return parts.join(' ');
     } else {
       return value;
+    }
+  };
+
+  const updateBillingAddress = (updates: Partial<typeof formData.billingAddress>) => {
+    const newBillingAddress = {
+      ...formData.billingAddress,
+      ...updates
+    };
+    
+    setFormData(prev => ({
+      ...prev,
+      billingAddress: newBillingAddress
+    }));
+
+    // Notify parent component of billing address changes
+    if (onBillingAddressChange) {
+      onBillingAddressChange(newBillingAddress);
     }
   };
 
@@ -275,13 +317,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
                 type="text"
                 required
                 value={formData.billingAddress.address}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  billingAddress: {
-                    ...prev.billingAddress,
-                    address: e.target.value
-                  }
-                }))}
+                onChange={(e) => updateBillingAddress({ address: e.target.value })}
                 className="w-full bg-dark-gray border border-gunmetal-light rounded-sm pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
                 autoComplete="billing street-address"
               />
@@ -298,13 +334,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
                 type="text"
                 required
                 value={formData.billingAddress.city}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  billingAddress: {
-                    ...prev.billingAddress,
-                    city: e.target.value
-                  }
-                }))}
+                onChange={(e) => updateBillingAddress({ city: e.target.value })}
                 className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
                 autoComplete="billing address-level2"
               />
@@ -322,13 +352,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
                 value={formData.billingAddress.state}
                 onChange={(e) => {
                   const value = e.target.value.toUpperCase();
-                  setFormData(prev => ({
-                    ...prev,
-                    billingAddress: {
-                      ...prev.billingAddress,
-                      state: value
-                    }
-                  }));
+                  updateBillingAddress({ state: value });
                   if (value.length === 2) {
                     validateState(value);
                   }
@@ -353,13 +377,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
                 value={formData.billingAddress.zipCode}
                 onChange={(e) => {
                   const value = e.target.value.replace(/\D/g, '').slice(0, 5);
-                  setFormData(prev => ({
-                    ...prev,
-                    billingAddress: {
-                      ...prev.billingAddress,
-                      zipCode: value
-                    }
-                  }));
+                  updateBillingAddress({ zipCode: value });
                   if (value.length === 5) {
                     validateZipCode(value);
                   }
