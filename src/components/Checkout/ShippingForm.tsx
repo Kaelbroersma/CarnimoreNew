@@ -23,6 +23,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
   loading = false
 }) => {
   const [stateError, setStateError] = useState<string | null>(null);
+  const [zipError, setZipError] = useState<string | null>(null);
 
   const US_STATES = [
     'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
@@ -43,6 +44,35 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
     return true;
   };
 
+  const validateForm = (): boolean => {
+    let isValid = true;
+
+    // Validate address
+    if (!formData.address?.trim()) {
+      isValid = false;
+    }
+
+    // Validate city
+    if (!formData.city?.trim()) {
+      isValid = false;
+    }
+
+    // Validate state
+    if (!formData.state?.trim() || !validateState(formData.state)) {
+      isValid = false;
+    }
+
+    // Validate ZIP code
+    if (!formData.zipCode?.trim() || !/^\d{5}$/.test(formData.zipCode)) {
+      setZipError('Please enter a valid 5-digit ZIP code');
+      isValid = false;
+    } else {
+      setZipError(null);
+    }
+
+    return isValid;
+  };
+
   const handleStateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toUpperCase();
     if (value.length <= 2) {
@@ -57,22 +87,9 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate all required fields
-    if (!formData.address.trim()) {
-      return;
+    if (validateForm()) {
+      onSubmit();
     }
-    if (!formData.city.trim()) {
-      return;
-    }
-    if (!validateState(formData.state)) {
-      return;
-    }
-    if (!formData.zipCode.trim() || !/^\d{5}$/.test(formData.zipCode)) {
-      return;
-    }
-
-    onSubmit();
   };
 
   return (
@@ -138,6 +155,9 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
             onChange={(e) => onChange({ zipCode: e.target.value.replace(/\D/g, '').slice(0, 5) })}
             className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
           />
+          {zipError && (
+            <p className="text-red-500 text-xs mt-1">{zipError}</p>
+          )}
         </div>
       </div>
 

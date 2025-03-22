@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
-import { useAuthStore } from '../store/authStore'; // Add auth store
+import { useAuthStore } from '../store/authStore';
 import { paymentService } from '../services/paymentService';
 import PaymentProcessingModal from '../components/PaymentProcessingModal';
-import PaymentAuthModal from '../components/Payment/PaymentAuthModal'; // Add auth modal
+import PaymentAuthModal from '../components/Payment/PaymentAuthModal';
 import { useOrderPolling } from '../hooks/useOrderPolling';
 import Button from '../components/Button';
 import CheckoutSteps from '../components/Checkout/CheckoutSteps';
@@ -21,18 +21,17 @@ type CheckoutStep = 'contact' | 'shipping' | 'ffl' | 'payment';
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { items, clearCart } = useCartStore();
-  const { user } = useAuthStore(); // Get user state
+  const { user } = useAuthStore();
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'failed'>('pending');
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
   const [showProcessingModal, setShowProcessingModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false); // Add auth modal state
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('contact');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [completedSteps, setCompletedSteps] = useState<Set<CheckoutStep>>(new Set()); // Track completed steps
+  const [completedSteps, setCompletedSteps] = useState<Set<CheckoutStep>>(new Set());
 
-  // Form states
   const [contactInfo, setContactInfo] = useState({
     firstName: user?.user_metadata?.first_name || '',
     lastName: user?.user_metadata?.last_name || '',
@@ -49,16 +48,28 @@ const CheckoutPage: React.FC = () => {
 
   const [selectedFFL, setSelectedFFL] = useState<FFLDealer | null>(null);
 
-  // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
-  // Check if order requires FFL
-  const hasFirearms = items.some(item => item.category?.ffl_required);
-  const hasNonFirearms = items.some(item => !item.category?.ffl_required);
+  const hasFirearms = items.some(item => {
+    const FFL_REQUIRED_CATEGORIES = [
+      '9079f9f6-6a43-4085-8638-d281c5345891', // Carnimore Models
+      'ef61bf50-8212-4ea6-b8e8-766b0686ed97', // Barreled Actions  
+      '2cb5e72e-c5bf-4856-9325-8751ebee3758'  // NFA Items
+    ];
+    return item.category && FFL_REQUIRED_CATEGORIES.includes(item.category.category_id);
+  });
 
-  // Define checkout steps based on cart contents
+  const hasNonFirearms = items.some(item => {
+    const FFL_REQUIRED_CATEGORIES = [
+      '9079f9f6-6a43-4085-8638-d281c5345891',
+      'ef61bf50-8212-4ea6-b8e8-766b0686ed97',
+      '2cb5e72e-c5bf-4856-9325-8751ebee3758'
+    ];
+    return !item.category || !FFL_REQUIRED_CATEGORIES.includes(item.category.category_id);
+  });
+
   const steps = [
     { 
       id: 'contact', 
@@ -96,7 +107,6 @@ const CheckoutPage: React.FC = () => {
     }
   });
 
-  // Pre-fill form data if user is logged in
   useEffect(() => {
     if (user) {
       setContactInfo({
@@ -108,7 +118,6 @@ const CheckoutPage: React.FC = () => {
     }
   }, [user]);
 
-  // Handle empty cart
   if (items.length === 0) {
     return (
       <div className="pt-24 pb-16">
@@ -166,7 +175,6 @@ const CheckoutPage: React.FC = () => {
     setOrderId(newOrderId);
 
     try {
-      // If not logged in, show auth modal
       if (!user) {
         setShowAuthModal(true);
         return;
@@ -197,7 +205,6 @@ const CheckoutPage: React.FC = () => {
 
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    // Retry payment submission after successful auth
     handlePaymentSubmit(paymentData);
   };
 
@@ -245,7 +252,6 @@ const CheckoutPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content */}
             <div className="lg:col-span-2">
               <CheckoutSection
                 title="Contact Information"
@@ -293,7 +299,6 @@ const CheckoutPage: React.FC = () => {
               </CheckoutSection>
             </div>
 
-            {/* Order Summary */}
             <div className="lg:col-span-1">
               <OrderSummary
                 items={items}

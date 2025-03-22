@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { cartService } from '../services/cartService';
 import { useAuthStore } from './authStore';
-import { debounce } from '../utils/debounce';
 
 export interface CartItem {
   id: string;
@@ -32,6 +31,8 @@ export interface CartItem {
 interface CartStore {
   items: CartItem[];
   isOpen: boolean;
+  loading: boolean;
+  error: string | null;
   totalValue: number;
   addItem: (item: CartItem) => Promise<void>;
   removeItem: (id: string) => Promise<void>;
@@ -42,6 +43,8 @@ interface CartStore {
   syncWithDatabase: () => Promise<void>;
   mergeGuestCart: () => Promise<void>;
   getCartTotal: () => number;
+  requiresFFL: () => boolean;
+  hasNonFFLItems: () => boolean;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -49,8 +52,9 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       items: [],
       isOpen: false,
-      totalValue: 0,
       loading: false,
+      error: null,
+      totalValue: 0,
 
       // Helper function to sync current cart state with database
       syncCart: async () => {
@@ -67,39 +71,17 @@ export const useCartStore = create<CartStore>()(
       // Sync cart with database
       syncWithDatabase: async () => {
         const user = useAuthStore.getState().user;
-        if (!user) {
-          return;
-        }
+        if (!user) return;
 
         try {
           set({ loading: true });
           const result = await cartService.getCart(user.id);
           if (result.data) {
-            // Validate and transform cart items from database
-            const validatedItems = result.data.items.map(item => ({
-              id: item.id,
-              name: item.name,
-              price: parseFloat(item.price),
-              quantity: parseInt(item.quantity, 10),
-              image: item.image,
-              options: item.options ? {
-                caliber: item.options.caliber,
-                colors: parseInt(item.options.colors, 10) || undefined,
-                longAction: Boolean(item.options.longAction),
-                deluxeVersion: Boolean(item.options.deluxeVersion),
-                isDirty: Boolean(item.options.isDirty),
-                size: item.options.size,
-                color: item.options.color
-              } : undefined
-            }));
-
             set({ 
-              items: validatedItems,
-              totalValue: parseFloat(result.data.total_value) || 0,
-              loading: false
+              items: result.data.items,
+              totalValue: result.data.total_value,
+              loading: false 
             });
-          } else {
-            set({ loading: false });
           }
         } catch (error) {
           console.error('Failed to sync cart with database:', error);
@@ -192,13 +174,25 @@ export const useCartStore = create<CartStore>()(
 
       getCartTotal: () => {
         return get().items.reduce((total, item) => total + (item.price * item.quantity), 0);
+      },
+
+      requiresFFL: () => {
+        return get().items.some(item => 
+          item.category?.ffl_required === true
+        );
+      },
+
+      hasNonFFLItems: () => {
+        return get().items.some(item => 
+          !item.category?.ffl_required
+        );
       }
     }),
     {
       name: 'cart-storage',
       skipHydration: false,
       storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
-      partialize: (state) => ({ items: state.items }), // Only persist items
+      partialize: (state) => ({ items: state.items }),
       version: 1
     }
   )
