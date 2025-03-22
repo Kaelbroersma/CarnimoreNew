@@ -616,7 +616,7 @@ export const handler: Handler = async (event) => {
             .from('ffl_dealers')
             .select('*')
             .eq('premise_zip_code', payload.zipCode)
-            .limit(25);
+            .limit(100);
 
           if (dealersError) {
             console.error('Error fetching FFL dealers:', {

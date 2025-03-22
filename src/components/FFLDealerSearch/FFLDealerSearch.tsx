@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, MapPin, Phone, Store, AlertCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, MapPin, Phone, Store, AlertCircle, ChevronDown } from 'lucide-react';
 import { fflService } from '../../services/fflService';
 import type { FFLDealer } from '../../types/payment';
 
@@ -11,9 +11,28 @@ interface FFLDealerSearchProps {
 export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSearchProps) {
   const [zipCode, setZipCode] = useState('');
   const [searchResults, setSearchResults] = useState<FFLDealer[]>([]);
+  const [displayedResults, setDisplayedResults] = useState<FFLDealer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDealer, setSelectedDealer] = useState<FFLDealer | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const resultsContainerRef = useRef<HTMLDivElement>(null);
+
+  const RESULTS_PER_PAGE = 5;
+  const CARNIMORE_NAME = 'CARNIMORE LLC';
+
+  useEffect(() => {
+    // Sort and paginate results when searchResults changes
+    const sortedResults = [...searchResults].sort((a, b) => {
+      // Always put Carnimore LLC first
+      if (a.business_name?.toUpperCase() === CARNIMORE_NAME) return -1;
+      if (b.business_name?.toUpperCase() === CARNIMORE_NAME) return 1;
+      return 0;
+    });
+
+    setDisplayedResults(sortedResults.slice(0, RESULTS_PER_PAGE));
+    setHasMore(sortedResults.length > RESULTS_PER_PAGE);
+  }, [searchResults]);
 
   const searchDealers = async (zip: string) => {
     setLoading(true);
@@ -44,6 +63,16 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
   const handleDealerSelect = (dealer: FFLDealer) => {
     setSelectedDealer(dealer);
     onDealerSelect(dealer);
+  };
+
+  const loadMore = () => {
+    const currentLength = displayedResults.length;
+    const nextResults = searchResults.slice(
+      currentLength,
+      currentLength + RESULTS_PER_PAGE
+    );
+    setDisplayedResults([...displayedResults, ...nextResults]);
+    setHasMore(currentLength + RESULTS_PER_PAGE < searchResults.length);
   };
 
   const getDealerName = (dealer: FFLDealer): string => {
@@ -124,15 +153,18 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
         )}
 
         {/* Results List */}
-        <div className="space-y-4">
-          {searchResults.map((dealer) => (
+        <div 
+          ref={resultsContainerRef}
+          className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar"
+        >
+          {displayedResults.map((dealer) => (
             <div
               key={dealer.lic_seqn}
               className={`border rounded-sm p-4 cursor-pointer transition-all duration-300 ${
                 selectedDealer?.lic_seqn === dealer.lic_seqn
                   ? 'border-tan bg-tan/5'
                   : 'border-gunmetal-light bg-dark-gray hover:border-tan/50'
-              }`}
+              } ${dealer.business_name?.toUpperCase() === CARNIMORE_NAME ? 'border-tan/50' : ''}`}
               onClick={() => handleDealerSelect(dealer)}
             >
               <div className="flex items-start justify-between">
@@ -157,6 +189,17 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
             </div>
           ))}
 
+          {/* Load More Button */}
+          {hasMore && (
+            <button
+              onClick={loadMore}
+              className="w-full py-2 px-4 text-tan hover:text-tan/80 transition-colors flex items-center justify-center gap-2"
+            >
+              Load More
+              <ChevronDown size={16} />
+            </button>
+          )}
+
           {/* Empty State */}
           {searchResults.length === 0 && !loading && zipCode && !error && (
             <div className="text-center py-8">
@@ -169,6 +212,23 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
           )}
         </div>
       </div>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #1E2529;
+          border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #BEA987;
+          border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #8C7A5B;
+        }
+      `}</style>
     </div>
   );
 }
