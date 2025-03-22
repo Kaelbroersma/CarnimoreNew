@@ -6,7 +6,6 @@ import { useAuthStore } from '../store/authStore';
 import { paymentService } from '../services/paymentService';
 import { useCheckoutFlow } from '../hooks/useCheckoutFlow';
 import PaymentProcessingModal from '../components/PaymentProcessingModal';
-import PaymentAuthModal from '../components/Payment/PaymentAuthModal';
 import { useOrderPolling } from '../hooks/useOrderPolling';
 import Button from '../components/Button';
 import CheckoutSteps from '../components/Checkout/CheckoutSteps';
@@ -50,38 +49,24 @@ const CheckoutPage: React.FC = () => {
 
   const [fflData, setFflData] = useState<FFLDealer | null>(null);
 
-  const [paymentFormData, setPaymentFormData] = useState({
-    cardNumber: '',
-    expiryMonth: '',
-    expiryYear: '',
-    cvv: '',
-    nameOnCard: ''
-  });
-
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'failed'>('pending');
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
   const [showProcessingModal, setShowProcessingModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paymentData, setPaymentData] = useState<any>(null);
 
   // Initialize user data if available
   useEffect(() => {
     if (user) {
-      setContactData({
+      const userData = {
         firstName: user.user_metadata?.first_name || '',
         lastName: user.user_metadata?.last_name || '',
         email: user.email || '',
         phone: ''
-      });
-      updateCheckoutData('contact', {
-        firstName: user.user_metadata?.first_name || '',
-        lastName: user.user_metadata?.last_name || '',
-        email: user.email || '',
-        phone: ''
-      });
+      };
+      setContactData(userData);
+      updateCheckoutData('contact', userData);
     }
   }, [user]);
 
@@ -146,22 +131,34 @@ const CheckoutPage: React.FC = () => {
     setOrderId(newOrderId);
 
     try {
-      if (!user) {
-        setPaymentData(formData);
-        setShowAuthModal(true);
-        return;
-      }
+      const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const tax = subtotal * 0.08;
+      const total = subtotal + tax;
 
-      const result = await paymentService.processPayment({
+      const paymentData = {
         ...formData,
         orderId: newOrderId,
         amount: total,
-        items,
+        items: items.map(item => ({
+          id: item.id,
+          quantity: item.quantity,
+          price: item.price,
+          options: item.options
+        })),
         email: contactData.email,
         phone: contactData.phone,
         shippingAddress: shippingData,
         fflDealerInfo: fflData
+      };
+
+      console.log('Processing payment:', {
+        timestamp: new Date().toISOString(),
+        orderId: newOrderId,
+        total,
+        itemCount: items.length
       });
+
+      const result = await paymentService.processPayment(paymentData);
 
       if (result.error) {
         throw new Error(result.error.message);
@@ -169,14 +166,14 @@ const CheckoutPage: React.FC = () => {
 
       setShowProcessingModal(true);
     } catch (error: any) {
+      console.error('Payment error:', {
+        timestamp: new Date().toISOString(),
+        error: error.message,
+        orderId: newOrderId
+      });
       setError(error.message);
       setLoading(false);
     }
-  };
-
-  const handleAuthSuccess = () => {
-    setShowAuthModal(false);
-    handlePaymentSubmit(paymentData);
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -196,13 +193,6 @@ const CheckoutPage: React.FC = () => {
           setPaymentStatus('pending');
           setPaymentMessage(null);
         }}
-      />
-
-      <PaymentAuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={handleAuthSuccess}
-        orderId={orderId || ''}
       />
 
       <div className="container mx-auto px-4">

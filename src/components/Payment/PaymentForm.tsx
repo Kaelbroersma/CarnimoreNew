@@ -112,6 +112,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
         throw new Error('Invalid CVV');
       }
 
+      // Submit payment data
       await onSubmit({
         ...formData,
         cardNumber,

@@ -27,6 +27,12 @@ export interface PaymentFormData {
   expiryYear: string;
   cvv: string;
   nameOnCard: string;
+  billingAddress: {
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
 }
 
 // Full payment data including shipping and FFL info
