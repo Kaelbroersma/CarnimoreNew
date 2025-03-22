@@ -2,6 +2,7 @@ import type { Result } from '../types/database';
 import type { PaymentData, PaymentResult } from '../types/payment';
 import { callNetlifyFunction } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
+import { useCartStore } from '../store/cartStore';
 
 export const paymentService = {
   async processPayment(data: PaymentData): Promise<Result<PaymentResult>> {
@@ -14,11 +15,9 @@ export const paymentService = {
         throw new Error('All payment fields are required');
       }
 
-      // Check if order requires FFL
-      const requiresFFL = data.items.some((item: any) => 
-        item.id.startsWith('CM') || // Carnimore Models
-        item.id.startsWith('BA')    // Barreled Actions
-      );
+      // Check if order requires FFL using cart store function
+      const requiresFFL = await useCartStore.getState().requiresFFL();
+      const hasNonFFLItems = await useCartStore.getState().hasNonFFLItems();
 
       // Validate FFL dealer info if required
       if (requiresFFL && !data.fflDealerInfo) {
@@ -26,13 +25,29 @@ export const paymentService = {
       }
 
       // Validate shipping address if non-firearm items are present
-      const hasNonFirearms = data.items.some((item: any) => 
-        !item.id.startsWith('CM') && 
-        !item.id.startsWith('BA')
-      );
+      if (hasNonFFLItems) {
+        // Validate shipping address
+        if (!data.shippingAddress) {
+          throw new Error('Shipping address is required for non-firearm items');
+        }
 
-      if (hasNonFirearms && !data.shippingAddress?.address?.trim()) {
-        throw new Error('Shipping address is required for non-firearm items');
+        const { address, city, state, zipCode } = data.shippingAddress;
+        
+        if (!address?.trim()) {
+          throw new Error('Street address is required');
+        }
+        
+        if (!city?.trim()) {
+          throw new Error('City is required');
+        }
+        
+        if (!state?.trim() || !/^[A-Z]{2}$/.test(state)) {
+          throw new Error('Valid state code is required (e.g., AZ)');
+        }
+        
+        if (!zipCode?.trim() || !/^\d{5}$/.test(zipCode)) {
+          throw new Error('Valid ZIP code is required');
+        }
       }
 
       // Format card number by removing spaces
@@ -48,7 +63,7 @@ export const paymentService = {
       const currentYear = currentDate.getFullYear() % 100;
       const currentMonth = currentDate.getMonth() + 1;
       const expMonth = parseInt(data.expiryMonth);
-      const expYear = parseInt(data.expiryYear);
+      const expYear = parseInt(data.expiryYear.slice(-2));
       
       if (expMonth < 1 || expMonth > 12 || 
           expYear < currentYear || 
@@ -67,11 +82,21 @@ export const paymentService = {
       // Format amount
       const formattedAmount = data.amount.toFixed(2);
 
+      // Log payment request preparation
+      console.log('Preparing payment request:', {
+        timestamp: new Date().toISOString(),
+        orderId: data.orderId,
+        requiresFFL,
+        hasNonFFLItems,
+        hasFFLInfo: !!data.fflDealerInfo,
+        hasShippingAddress: !!data.shippingAddress
+      });
+
       // Prepare payment request data
       const paymentRequest = {
         cardNumber,
         expiryMonth,
-        expiryYear: data.expiryYear.slice(-2),
+        expiryYear: expYear.toString(),
         cvv: data.cvv,
         amount: formattedAmount,
         shippingAddress: data.shippingAddress,
@@ -104,8 +129,10 @@ export const paymentService = {
       // Log any initial errors but don't throw yet
       if (!response.ok || result.error) {
         console.warn('Initial payment response indicates potential issue:', {
+          timestamp: new Date().toISOString(),
           ok: response.ok,
-          error: result.error
+          error: result.error,
+          status: response.status
         });
       }
 
@@ -120,7 +147,13 @@ export const paymentService = {
       };
 
     } catch (error: any) {
-      console.error('Payment error:', error);
+      console.error('Payment error:', {
+        timestamp: new Date().toISOString(),
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
       return {
         data: null,
         error: {

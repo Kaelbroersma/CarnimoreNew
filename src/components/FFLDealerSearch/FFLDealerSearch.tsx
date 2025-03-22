@@ -46,7 +46,7 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
     onDealerSelect(dealer);
   };
 
-  const formatPhoneNumber = (phone: string | undefined): string => {
+  const formatPhoneNumber = (phone: string): string => {
     if (!phone) return '';
     const cleaned = phone.replace(/\D/g, '');
     const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
@@ -58,6 +58,10 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
 
   const getDealerName = (dealer: FFLDealer): string => {
     return dealer.BUSINESS_NAME?.trim() || dealer.LICENSE_NAME?.trim() || 'Unknown Dealer';
+  };
+
+  const formatLicenseNumber = (license: string): string => {
+    return license ? `FFL #${license}` : '';
   };
 
   return (
@@ -80,19 +84,17 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
             </div>
           </div>
         </div>
-        
+
         {/* Search Form */}
         <form onSubmit={handleSearch} className="mb-6">
           <div className="relative">
             <input
               type="text"
               value={zipCode}
-              onChange={(e) => setZipCode(e.target.value.slice(0, 5))}
+              onChange={(e) => setZipCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
               placeholder="Enter ZIP Code"
               pattern="[0-9]{5}"
-              className="w-full bg-dark-gray border border-gunmetal-light rounded-sm pl-4 pr-12 py-2 text-white placeholder-gray-500
-                focus:border-tan focus:outline-none focus:ring-2 focus:ring-tan focus:ring-opacity-50
-                transition duration-300"
+              className="w-full bg-dark-gray border border-gunmetal-light rounded-sm pl-4 pr-12 py-2 text-white placeholder-gray-500 focus:border-tan focus:outline-none focus:ring-2 focus:ring-tan focus:ring-opacity-50 transition duration-300"
               required
             />
             <button
@@ -107,11 +109,9 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
 
         {/* Error State */}
         {error && (
-          <div className="flex items-start bg-red-900/30 border border-red-700 rounded-sm p-4 mb-8">
-            <AlertCircle className="text-red-400 mr-3 flex-shrink-0 mt-0.5" size={20} />
-            <div>
-              <p className="text-red-300 text-sm">{error}</p>
-            </div>
+          <div className="bg-red-900/30 border border-red-700 rounded-sm p-4 mb-6 flex items-start">
+            <AlertCircle className="text-red-400 mr-2 flex-shrink-0 mt-0.5" size={16} />
+            <p className="text-red-300 text-sm">{error}</p>
           </div>
         )}
 
@@ -152,7 +152,7 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
                 </div>
               </div>
               <div className="mt-2 text-sm text-gray-500">
-                License: {dealer.LIC_SEQN}
+                {formatLicenseNumber(dealer.LIC_SEQN)}
               </div>
             </div>
           ))}
