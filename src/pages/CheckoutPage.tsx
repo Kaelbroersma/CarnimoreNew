@@ -33,6 +33,31 @@ const CheckoutPage: React.FC = () => {
     validateStep
   } = useCheckoutFlow();
 
+  // Initialize all form states
+  const [contactData, setContactData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: ''
+  });
+
+  const [shippingData, setShippingData] = useState({
+    address: '',
+    city: '',
+    state: '',
+    zipCode: ''
+  });
+
+  const [fflData, setFflData] = useState<FFLDealer | null>(null);
+
+  const [paymentFormData, setPaymentFormData] = useState({
+    cardNumber: '',
+    expiryMonth: '',
+    expiryYear: '',
+    cvv: '',
+    nameOnCard: ''
+  });
+
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'failed'>('pending');
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
@@ -42,13 +67,20 @@ const CheckoutPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [paymentData, setPaymentData] = useState<any>(null);
 
+  // Initialize user data if available
   useEffect(() => {
     if (user) {
+      setContactData({
+        firstName: user.user_metadata?.first_name || '',
+        lastName: user.user_metadata?.last_name || '',
+        email: user.email || '',
+        phone: ''
+      });
       updateCheckoutData('contact', {
         firstName: user.user_metadata?.first_name || '',
         lastName: user.user_metadata?.last_name || '',
         email: user.email || '',
-        phone: checkoutData.contact?.phone || ''
+        phone: ''
       });
     }
   }, [user]);
@@ -63,21 +95,37 @@ const CheckoutPage: React.FC = () => {
     }
   });
 
-  const handleContactSubmit = (data: any) => {
+  if (items.length === 0) {
+    return (
+      <div className="pt-24 pb-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="font-heading text-3xl md:text-4xl font-bold mb-6">Your Cart is Empty</h1>
+            <p className="text-gray-400 mb-8">Add some items to your cart before proceeding to checkout.</p>
+            <Button to="/shop" variant="primary">
+              Continue Shopping
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleContactSubmit = () => {
     console.log('Contact form submitted:', {
       timestamp: new Date().toISOString(),
-      data
+      data: contactData
     });
-    updateCheckoutData('contact', data);
+    updateCheckoutData('contact', contactData);
     goToNextStep();
   };
 
-  const handleShippingSubmit = (data: any) => {
+  const handleShippingSubmit = () => {
     console.log('Shipping form submitted:', {
       timestamp: new Date().toISOString(),
-      data
+      data: shippingData
     });
-    updateCheckoutData('shipping', data);
+    updateCheckoutData('shipping', shippingData);
     goToNextStep();
   };
 
@@ -86,11 +134,12 @@ const CheckoutPage: React.FC = () => {
       timestamp: new Date().toISOString(),
       dealer
     });
+    setFflData(dealer);
     updateCheckoutData('ffl', dealer);
     goToNextStep();
   };
 
-  const handlePaymentSubmit = async (paymentData: any) => {
+  const handlePaymentSubmit = async (formData: any) => {
     setLoading(true);
     setError(null);
     const newOrderId = crypto.randomUUID();
@@ -98,20 +147,20 @@ const CheckoutPage: React.FC = () => {
 
     try {
       if (!user) {
-        setPaymentData(paymentData);
+        setPaymentData(formData);
         setShowAuthModal(true);
         return;
       }
 
       const result = await paymentService.processPayment({
-        ...paymentData,
+        ...formData,
         orderId: newOrderId,
         amount: total,
         items,
-        email: checkoutData.contact.email,
-        phone: checkoutData.contact.phone,
-        shippingAddress: checkoutData.shipping,
-        fflDealerInfo: checkoutData.ffl
+        email: contactData.email,
+        phone: contactData.phone,
+        shippingAddress: shippingData,
+        fflDealerInfo: fflData
       });
 
       if (result.error) {
@@ -133,22 +182,6 @@ const CheckoutPage: React.FC = () => {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
-
-  if (items.length === 0) {
-    return (
-      <div className="pt-24 pb-16">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto text-center">
-            <h1 className="font-heading text-3xl md:text-4xl font-bold mb-6">Your Cart is Empty</h1>
-            <p className="text-gray-400 mb-8">Add some items to your cart before proceeding to checkout.</p>
-            <Button to="/shop" variant="primary">
-              Continue Shopping
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="pt-24 pb-16">
@@ -207,8 +240,8 @@ const CheckoutPage: React.FC = () => {
                 isActive={currentStep === 'contact'}
               >
                 <ContactForm
-                  formData={checkoutData.contact}
-                  onChange={(data) => updateCheckoutData('contact', data)}
+                  formData={contactData}
+                  onChange={setContactData}
                   onSubmit={handleContactSubmit}
                   loading={loading}
                 />
@@ -220,13 +253,8 @@ const CheckoutPage: React.FC = () => {
                   isActive={currentStep === 'shipping'}
                 >
                   <ShippingForm
-                    formData={checkoutData.shipping || {
-                      address: '',
-                      city: '',
-                      state: '',
-                      zipCode: ''
-                    }}
-                    onChange={(data) => updateCheckoutData('shipping', data)}
+                    formData={shippingData}
+                    onChange={setShippingData}
                     onSubmit={handleShippingSubmit}
                     loading={loading}
                   />
