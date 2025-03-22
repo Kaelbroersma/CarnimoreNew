@@ -10,10 +10,21 @@ export const paymentService = {
 
     try {
       // Validate required fields
-      if (!data.cardNumber?.trim() || !data.expiryMonth?.trim() || !data.expiryYear?.trim() || 
-          !data.cvv?.trim() || !data.amount || !data.orderId || !data.email || !data.phone) {
-        throw new Error('All payment fields are required');
-      }
+      if (!data.cardNumber?.trim()) throw new Error('Card number is required');
+      if (!data.expiryMonth?.trim()) throw new Error('Expiry month is required');
+      if (!data.expiryYear?.trim()) throw new Error('Expiry year is required');
+      if (!data.cvv?.trim()) throw new Error('CVV is required');
+      if (!data.nameOnCard?.trim()) throw new Error('Name on card is required');
+      if (!data.orderId) throw new Error('Order ID is required');
+      if (!data.amount) throw new Error('Amount is required');
+      if (!data.email?.trim()) throw new Error('Email is required');
+      if (!data.phone?.trim()) throw new Error('Phone number is required');
+
+      // Validate billing address
+      if (!data.billingAddress?.address?.trim()) throw new Error('Billing address is required');
+      if (!data.billingAddress?.city?.trim()) throw new Error('Billing city is required');
+      if (!data.billingAddress?.state?.trim()) throw new Error('Billing state is required');
+      if (!data.billingAddress?.zipCode?.trim()) throw new Error('Billing ZIP code is required');
 
       // Check if order requires FFL using cart store function
       const requiresFFL = await useCartStore.getState().requiresFFL();
@@ -26,28 +37,16 @@ export const paymentService = {
 
       // Validate shipping address if non-firearm items are present
       if (hasNonFFLItems) {
-        // Validate shipping address
         if (!data.shippingAddress) {
           throw new Error('Shipping address is required for non-firearm items');
         }
 
         const { address, city, state, zipCode } = data.shippingAddress;
         
-        if (!address?.trim()) {
-          throw new Error('Street address is required');
-        }
-        
-        if (!city?.trim()) {
-          throw new Error('City is required');
-        }
-        
-        if (!state?.trim() || !/^[A-Z]{2}$/.test(state)) {
-          throw new Error('Valid state code is required (e.g., AZ)');
-        }
-        
-        if (!zipCode?.trim() || !/^\d{5}$/.test(zipCode)) {
-          throw new Error('Valid ZIP code is required');
-        }
+        if (!address?.trim()) throw new Error('Shipping address is required');
+        if (!city?.trim()) throw new Error('Shipping city is required');
+        if (!state?.trim() || !/^[A-Z]{2}$/.test(state)) throw new Error('Valid shipping state is required (e.g., AZ)');
+        if (!zipCode?.trim() || !/^\d{5}$/.test(zipCode)) throw new Error('Valid shipping ZIP code is required');
       }
 
       // Format card number by removing spaces
@@ -60,26 +59,25 @@ export const paymentService = {
       
       // Validate expiry date
       const currentDate = new Date();
-      const currentYear = currentDate.getFullYear() % 100;
+      const currentYear = currentDate.getFullYear();
       const currentMonth = currentDate.getMonth() + 1;
       const expMonth = parseInt(data.expiryMonth);
-      const expYear = parseInt(data.expiryYear.slice(-2));
+      const expYear = parseInt(data.expiryYear);
       
-      if (expMonth < 1 || expMonth > 12 || 
-          expYear < currentYear || 
+      if (expYear < currentYear || 
           (expYear === currentYear && expMonth < currentMonth)) {
-        throw new Error('Invalid expiry date');
+        throw new Error('Card has expired');
       }
       
       // Validate CVV
       if (!/^\d{3,4}$/.test(data.cvv)) {
         throw new Error('Invalid CVV');
       }
-      
+
       // Format expiry month to ensure 2 digits
       const expiryMonth = data.expiryMonth.padStart(2, '0');
-      
-      // Format amount
+
+      // Format amount to 2 decimal places
       const formattedAmount = data.amount.toFixed(2);
 
       // Log payment request preparation
@@ -98,6 +96,8 @@ export const paymentService = {
         expiryMonth,
         expiryYear: expYear.toString(),
         cvv: data.cvv,
+        nameOnCard: data.nameOnCard,
+        billingAddress: data.billingAddress,
         amount: formattedAmount,
         shippingAddress: data.shippingAddress,
         fflDealerInfo: data.fflDealerInfo,
@@ -136,7 +136,10 @@ export const paymentService = {
         });
       }
 
-      // Return success response immediately to allow for polling
+      // Add delay before returning to allow order creation
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      // Return success response to allow for polling
       return {
         data: {
           orderId: data.orderId,

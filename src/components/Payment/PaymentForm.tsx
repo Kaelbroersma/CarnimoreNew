@@ -74,6 +74,11 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
     setLoading(true);
 
     try {
+      // Validate required fields
+      if (!formData.nameOnCard?.trim()) {
+        throw new Error('Name on card is required');
+      }
+
       // Validate billing address
       if (!formData.billingAddress.address?.trim()) {
         throw new Error('Billing address is required');
@@ -159,6 +164,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
         </div>
       )}
 
+      {/* Name on Card */}
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-1">
           Name on Card <span className="text-tan">*</span>
@@ -169,9 +175,11 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
           value={formData.nameOnCard}
           onChange={(e) => setFormData(prev => ({ ...prev, nameOnCard: e.target.value }))}
           className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+          autoComplete="cc-name"
         />
       </div>
 
+      {/* Card Number */}
       <div>
         <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
           <CreditCard size={16} className="mr-2 text-tan" />
@@ -188,10 +196,12 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
             cardNumber: formatCardNumber(e.target.value)
           }))}
           className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+          autoComplete="cc-number"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-6">
+        {/* Expiry Date */}
         <div>
           <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
             <CalendarIcon size={16} className="mr-2 text-tan" />
@@ -206,6 +216,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
               }))}
               className="bg-dark-gray border border-gunmetal-light rounded-sm px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
               required
+              autoComplete="cc-exp-month"
             >
               <option value="">MM</option>
               {months.map(month => (
@@ -222,6 +233,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
               }))}
               className="bg-dark-gray border border-gunmetal-light rounded-sm px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
               required
+              autoComplete="cc-exp-year"
             >
               <option value="">YYYY</option>
               {years.map(year => (
@@ -233,6 +245,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
           </div>
         </div>
 
+        {/* CVV */}
         <div>
           <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
             <Lock size={16} className="mr-2 text-tan" />
@@ -249,6 +262,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
               cvv: e.target.value.replace(/\D/g, '')
             }))}
             className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
+            autoComplete="cc-csc"
           />
         </div>
       </div>
