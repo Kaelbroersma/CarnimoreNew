@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MapPin } from 'lucide-react';
-import Button from '../Button';
+import Button from '../components/Button';
 
 interface ShippingAddress {
   address: string;
