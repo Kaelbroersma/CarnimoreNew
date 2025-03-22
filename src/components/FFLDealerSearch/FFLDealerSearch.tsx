@@ -46,13 +46,18 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
     onDealerSelect(dealer);
   };
 
-  const formatPhoneNumber = (phone: string) => {
+  const formatPhoneNumber = (phone: string | undefined): string => {
+    if (!phone) return '';
     const cleaned = phone.replace(/\D/g, '');
     const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
     if (match) {
       return `(${match[1]}) ${match[2]}-${match[3]}`;
     }
     return phone;
+  };
+
+  const getDealerName = (dealer: FFLDealer): string => {
+    return dealer.BUSINESS_NAME?.trim() || dealer.LICENSE_NAME?.trim() || 'Unknown Dealer';
   };
 
   return (
@@ -102,9 +107,11 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-900/30 border border-red-700 rounded-sm p-4 mb-6 flex items-start">
-            <AlertCircle className="text-red-400 mr-2 flex-shrink-0 mt-0.5" size={16} />
-            <p className="text-red-300 text-sm">{error}</p>
+          <div className="flex items-start bg-red-900/30 border border-red-700 rounded-sm p-4 mb-8">
+            <AlertCircle className="text-red-400 mr-3 flex-shrink-0 mt-0.5" size={20} />
+            <div>
+              <p className="text-red-300 text-sm">{error}</p>
+            </div>
           </div>
         )}
 
@@ -132,7 +139,7 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
                 <div className="flex-1">
                   <h3 className="text-lg font-medium flex items-center gap-2 mb-3">
                     <Store size={18} className="text-tan" />
-                    {dealer.BUSINESS_NAME}
+                    {getDealerName(dealer)}
                   </h3>
                   <p className="text-gray-400 flex items-center gap-2 mb-2">
                     <MapPin size={16} className="text-tan" />
