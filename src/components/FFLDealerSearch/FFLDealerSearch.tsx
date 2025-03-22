@@ -46,6 +46,15 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
     onDealerSelect(dealer);
   };
 
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
+    if (match) {
+      return `(${match[1]}) ${match[2]}-${match[3]}`;
+    }
+    return phone;
+  };
+
   return (
     <div className={`bg-gunmetal rounded-sm shadow-luxury ${className}`}>
       <div className="p-6">
@@ -91,7 +100,7 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
           </div>
         </form>
 
-        {/* Error Message */}
+        {/* Error State */}
         {error && (
           <div className="bg-red-900/30 border border-red-700 rounded-sm p-4 mb-6 flex items-start">
             <AlertCircle className="text-red-400 mr-2 flex-shrink-0 mt-0.5" size={16} />
@@ -131,7 +140,7 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
                   </p>
                   <p className="text-gray-400 flex items-center gap-2">
                     <Phone size={16} className="text-tan" />
-                    {dealer.VOICE_PHONE}
+                    {formatPhoneNumber(dealer.VOICE_PHONE)}
                   </p>
                 </div>
               </div>
