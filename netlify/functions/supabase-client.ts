@@ -610,7 +610,7 @@ export const handler: Handler = async (event) => {
           const { data: dealers, error: dealersError } = await supabase
             .from('ffl_dealers')
             .select('*')
-            .eq('PREMISE_ZIP_CODE', payload.zipCode)
+            .eq('premise_zip_code', payload.zipCode)
             .limit(10);
 
           if (dealersError) {
