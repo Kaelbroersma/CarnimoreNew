@@ -33,99 +33,27 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
     'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
   ];
 
-  const validateState = (state: string): boolean => {
-    if (!state) return false;
-    const upperState = state.toUpperCase();
-    if (!US_STATES.includes(upperState)) {
-      setStateError('Please enter a valid 2-letter state abbreviation (e.g., AZ for Arizona)');
-      return false;
-    }
-    setStateError(null);
-    return true;
-  };
-
-  const validateZipCode = (zip: string): boolean => {
-    if (!zip || !/^\d{5}$/.test(zip)) {
-      setZipError('Please enter a valid 5-digit ZIP code');
-      return false;
-    }
-    setZipError(null);
-    return true;
-  };
-
-  const validateForm = (): boolean => {
-    let isValid = true;
-
-    // Validate address
-    if (!formData.address?.trim()) {
-      isValid = false;
-    }
-
-    // Validate city
-    if (!formData.city?.trim()) {
-      isValid = false;
-    }
-
-    // Validate state
-    if (!validateState(formData.state)) {
-      isValid = false;
-    }
-
-    // Validate ZIP code
-    if (!validateZipCode(formData.zipCode)) {
-      isValid = false;
-    }
-
-    return isValid;
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    e.stopPropagation();
 
-    console.log('Shipping form submit attempt:', {
-      timestamp: new Date().toISOString(),
-      formData
-    });
-
-    // Validate all fields
-    const isValid = validateForm();
-
-    console.log('Shipping form validation result:', {
-      timestamp: new Date().toISOString(),
-      isValid,
-      errors: {
-        state: stateError,
-        zip: zipError
-      }
-    });
-
-    if (!isValid) {
+    // Only validate state and ZIP
+    const upperState = formData.state.toUpperCase();
+    if (!US_STATES.includes(upperState)) {
+      setStateError('Please enter a valid 2-letter state abbreviation (e.g., AZ for Arizona)');
       return;
     }
 
-    // Normalize data before submitting
-    const normalizedData = {
-      address: formData.address.trim(),
-      city: formData.city.trim(),
-      state: formData.state.toUpperCase(),
-      zipCode: formData.zipCode.trim()
-    };
+    if (!/^\d{5}$/.test(formData.zipCode)) {
+      setZipError('Please enter a valid 5-digit ZIP code');
+      return;
+    }
 
-    console.log('Submitting shipping form:', {
-      timestamp: new Date().toISOString(),
-      normalizedData
-    });
-
-    // Update form data with normalized values
-    onChange(normalizedData);
-    
-    // Call onSubmit to proceed to next step
+    // If we get here, validation passed
     onSubmit();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-1">
           Street Address <span className="text-tan">*</span>
@@ -137,7 +65,6 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
             value={formData.address}
             onChange={(e) => onChange({ address: e.target.value })}
             className="w-full bg-dark-gray border border-gunmetal-light rounded-sm pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
-            autoComplete="street-address"
           />
           <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
         </div>
@@ -154,7 +81,6 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
             value={formData.city}
             onChange={(e) => onChange({ city: e.target.value })}
             className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
-            autoComplete="address-level2"
           />
         </div>
 
@@ -171,12 +97,9 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
             onChange={(e) => {
               const value = e.target.value.toUpperCase();
               onChange({ state: value });
-              if (value.length === 2) {
-                validateState(value);
-              }
+              setStateError(null);
             }}
             className={`w-full bg-dark-gray border ${stateError ? 'border-red-500' : 'border-gunmetal-light'} rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent uppercase`}
-            autoComplete="address-level1"
           />
           {stateError && (
             <p className="text-red-500 text-xs mt-1">{stateError}</p>
@@ -191,17 +114,13 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
             type="text"
             required
             maxLength={5}
-            pattern="[0-9]{5}"
             value={formData.zipCode}
             onChange={(e) => {
               const value = e.target.value.replace(/\D/g, '').slice(0, 5);
               onChange({ zipCode: value });
-              if (value.length === 5) {
-                validateZipCode(value);
-              }
+              setZipError(null);
             }}
             className={`w-full bg-dark-gray border ${zipError ? 'border-red-500' : 'border-gunmetal-light'} rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent`}
-            autoComplete="postal-code"
           />
           {zipError && (
             <p className="text-red-500 text-xs mt-1">{zipError}</p>
