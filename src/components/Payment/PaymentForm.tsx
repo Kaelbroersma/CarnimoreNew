@@ -150,17 +150,11 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
   };
 
   return (
-    <motion.form
-      onSubmit={handleSubmit}
-      className="space-y-6"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
+    <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="bg-red-900/30 border border-red-700 rounded-sm p-4 flex items-start">
           <AlertCircle className="text-red-400 mr-2 flex-shrink-0 mt-0.5" size={16} />
-          <p className="text-red-300 text-sm">{error}</p>
+          <p className="text-red-300">{error}</p>
         </div>
       )}
 
@@ -183,7 +177,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
       <div>
         <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
           <CreditCard size={16} className="mr-2 text-tan" />
-          Card Number <span className="text-tan ml-1">*</span>
+          Card Number <span className="text-tan">*</span>
         </label>
         <input
           type="text"
@@ -191,8 +185,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
           maxLength={19}
           placeholder="1234 5678 9012 3456"
           value={formData.cardNumber}
-          onChange={(e) => setFormData(prev => ({
-            ...prev,
+          onChange={(e) => setFormData(prev => ({ 
+            ...prev, 
             cardNumber: formatCardNumber(e.target.value)
           }))}
           className="w-full bg-dark-gray border border-gunmetal-light rounded-sm px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-tan focus:border-transparent"
@@ -205,7 +199,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
         <div>
           <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
             <CalendarIcon size={16} className="mr-2 text-tan" />
-            Expiry Date <span className="text-tan ml-1">*</span>
+            Expiry Date <span className="text-tan">*</span>
           </label>
           <div className="grid grid-cols-2 gap-2">
             <select
@@ -249,7 +243,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
         <div>
           <label className="flex items-center text-sm font-medium text-gray-300 mb-2">
             <Lock size={16} className="mr-2 text-tan" />
-            CVV <span className="text-tan ml-1">*</span>
+            CVV <span className="text-tan">*</span>
           </label>
           <input
             type="text"
@@ -396,7 +390,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit }) => {
         Your payment information is securely processed.<br />
         We do not store your card details.
       </p>
-    </motion.form>
+    </form>
   );
 };
 
