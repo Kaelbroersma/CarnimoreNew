@@ -25,6 +25,11 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
         throw new Error(result.error.message);
       }
 
+      console.log('FFL search results:', {
+        timestamp: new Date().toISOString(),
+        results: result.data
+      });
+
       setSearchResults(result.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -42,6 +47,20 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
   };
 
   const handleDealerSelect = (dealer: FFLDealer) => {
+    console.log('Selected dealer:', {
+      timestamp: new Date().toISOString(),
+      dealer: {
+        businessName: dealer.BUSINESS_NAME,
+        licenseName: dealer.LICENSE_NAME,
+        licenseNumber: dealer.LIC_SEQN,
+        address: {
+          street: dealer.PREMISE_STREET,
+          city: dealer.PREMISE_CITY,
+          state: dealer.PREMISE_STATE,
+          zip: dealer.PREMISE_ZIP_CODE
+        }
+      }
+    });
     setSelectedDealer(dealer);
     onDealerSelect(dealer);
   };
@@ -57,35 +76,55 @@ export function FFLDealerSearch({ onDealerSelect, className = '' }: FFLDealerSea
   };
 
   const getDealerName = (dealer: FFLDealer): string => {
-    // Use business name if available, otherwise use license name
-    const businessName = dealer.BUSINESS_NAME?.trim();
-    const licenseName = dealer.LICENSE_NAME?.trim();
-    return businessName || licenseName || 'Unknown Dealer';
+    // Log raw values for debugging
+    console.log('Dealer name data:', {
+      timestamp: new Date().toISOString(),
+      businessName: dealer.BUSINESS_NAME,
+      licenseName: dealer.LICENSE_NAME,
+      licenseNumber: dealer.LIC_SEQN
+    });
+
+    // Carefully clean and check both name fields
+    const businessName = dealer.BUSINESS_NAME?.trim().replace(/\s+/g, ' ') || '';
+    const licenseName = dealer.LICENSE_NAME?.trim().replace(/\s+/g, ' ') || '';
+
+    // Use business name if available and not empty
+    if (businessName && businessName !== '') {
+      return businessName;
+    }
+
+    // Fall back to license name if available and not empty
+    if (licenseName && licenseName !== '') {
+      return licenseName;
+    }
+
+    // Last resort
+    return 'Unknown Dealer';
   };
 
   const formatAddress = (dealer: FFLDealer): string => {
     const parts = [];
-    
-    // Add street address if available
+
+    // Add premise street if available
     if (dealer.PREMISE_STREET?.trim()) {
-      parts.push(dealer.PREMISE_STREET.trim());
+      parts.push(dealer.PREMISE_STREET.trim().replace(/\s+/g, ' '));
     }
-    
-    // Add city if available
+
+    // Add premise city if available
     if (dealer.PREMISE_CITY?.trim()) {
-      parts.push(dealer.PREMISE_CITY.trim());
+      parts.push(dealer.PREMISE_CITY.trim().replace(/\s+/g, ' '));
     }
-    
-    // Add state if available
+
+    // Add premise state if available
     if (dealer.PREMISE_STATE?.trim()) {
       parts.push(dealer.PREMISE_STATE.trim());
     }
-    
-    // Add ZIP code if available
+
+    // Add premise zip code if available
     if (dealer.PREMISE_ZIP_CODE?.trim()) {
       parts.push(dealer.PREMISE_ZIP_CODE.trim());
     }
-    
+
     return parts.join(', ') || 'No address provided';
   };
 
