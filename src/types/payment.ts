@@ -1,22 +1,22 @@
 // Add FFL dealer type
 export interface FFLDealer {
-  LIC_REGN: string;
-  LIC_DIST: string;
-  LIC_CNTY: string;
-  LIC_TYPE: string;
-  LIC_XPRDTE: string;
-  LIC_SEQN: string;
-  LICENSE_NAME: string;
-  BUSINESS_NAME: string;
-  PREMISE_STREET: string;
-  PREMISE_CITY: string;
-  PREMISE_STATE: string;
-  PREMISE_ZIP_CODE: string;
-  MAIL_STREET: string;
-  MAIL_CITY: string;
-  MAIL_STATE: string;
-  MAIL_ZIP_CODE: string;
-  VOICE_PHONE: string;
+  lic_regn: string;
+  lic_dist: string;
+  lic_cnty: string;
+  lic_type: string;
+  lic_xprdte: string;
+  lic_seqn: string;
+  license_name: string;
+  business_name: string;
+  premise_street: string;
+  premise_city: string;
+  premise_state: string;
+  premise_zip_code: string;
+  mail_street?: string;
+  mail_city?: string;
+  mail_state?: string;
+  mail_zip_code?: string;
+  voice_phone: string;
   distance?: number;
 }
 
