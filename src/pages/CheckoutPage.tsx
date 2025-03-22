@@ -19,15 +19,18 @@ import PaymentForm from '../components/Payment/PaymentForm';
 
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
-  const { items, clearCart, requiresFFL, hasNonFFLItems } = useCartStore();
+  const { items, clearCart } = useCartStore();
   const { user } = useAuthStore();
   const { 
     currentStep, 
     completedSteps,
     availableSteps, 
+    checkoutData,
     loading: flowLoading, 
     error: flowError,
-    goToNextStep 
+    goToNextStep,
+    updateCheckoutData,
+    validateStep
   } = useCheckoutFlow();
 
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -39,25 +42,16 @@ const CheckoutPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [paymentData, setPaymentData] = useState<any>(null);
 
-  const [contactInfo, setContactInfo] = useState({
-    firstName: user?.user_metadata?.first_name || '',
-    lastName: user?.user_metadata?.last_name || '',
-    email: user?.email || '',
-    phone: ''
-  });
-
-  const [shippingAddress, setShippingAddress] = useState({
-    address: '',
-    city: '',
-    state: '',
-    zipCode: ''
-  });
-
-  const [selectedFFL, setSelectedFFL] = useState<FFLDealer | null>(null);
-
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const tax = subtotal * 0.08;
-  const total = subtotal + tax;
+  useEffect(() => {
+    if (user) {
+      updateCheckoutData('contact', {
+        firstName: user.user_metadata?.first_name || '',
+        lastName: user.user_metadata?.last_name || '',
+        email: user.email || '',
+        phone: checkoutData.contact?.phone || ''
+      });
+    }
+  }, [user]);
 
   useOrderPolling({
     orderId,
@@ -68,17 +62,6 @@ const CheckoutPage: React.FC = () => {
       }
     }
   });
-
-  useEffect(() => {
-    if (user) {
-      setContactInfo({
-        firstName: user.user_metadata?.first_name || '',
-        lastName: user.user_metadata?.last_name || '',
-        email: user.email || '',
-        phone: ''
-      });
-    }
-  }, [user]);
 
   if (items.length === 0) {
     return (
@@ -96,16 +79,18 @@ const CheckoutPage: React.FC = () => {
     );
   }
 
-  const handleContactSubmit = () => {
+  const handleContactSubmit = (data: any) => {
+    updateCheckoutData('contact', data);
     goToNextStep();
   };
 
-  const handleShippingSubmit = () => {
+  const handleShippingSubmit = (data: any) => {
+    updateCheckoutData('shipping', data);
     goToNextStep();
   };
 
   const handleFFLSelect = (dealer: FFLDealer) => {
-    setSelectedFFL(dealer);
+    updateCheckoutData('ffl', dealer);
     goToNextStep();
   };
 
@@ -122,18 +107,15 @@ const CheckoutPage: React.FC = () => {
         return;
       }
 
-      const needsFFL = await requiresFFL();
-      const needsShipping = await hasNonFFLItems();
-
       const result = await paymentService.processPayment({
         ...paymentData,
         orderId: newOrderId,
         amount: total,
         items,
-        email: contactInfo.email,
-        phone: contactInfo.phone,
-        shippingAddress: needsShipping ? shippingAddress : undefined,
-        fflDealerInfo: needsFFL ? selectedFFL : undefined
+        email: checkoutData.contact.email,
+        phone: checkoutData.contact.phone,
+        shippingAddress: checkoutData.shipping,
+        fflDealerInfo: checkoutData.ffl
       });
 
       if (result.error) {
@@ -151,6 +133,10 @@ const CheckoutPage: React.FC = () => {
     setShowAuthModal(false);
     handlePaymentSubmit(paymentData);
   };
+
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const tax = subtotal * 0.08;
+  const total = subtotal + tax;
 
   return (
     <div className="pt-24 pb-16">
@@ -209,12 +195,31 @@ const CheckoutPage: React.FC = () => {
                 isActive={currentStep === 'contact'}
               >
                 <ContactForm
-                  formData={contactInfo}
-                  onChange={setContactInfo}
+                  formData={checkoutData.contact}
+                  onChange={(data) => updateCheckoutData('contact', data)}
                   onSubmit={handleContactSubmit}
                   loading={loading}
                 />
               </CheckoutSection>
+
+              {availableSteps.includes('shipping') && (
+                <CheckoutSection
+                  title="Shipping Information"
+                  isActive={currentStep === 'shipping'}
+                >
+                  <ShippingForm
+                    formData={checkoutData.shipping || {
+                      address: '',
+                      city: '',
+                      state: '',
+                      zipCode: ''
+                    }}
+                    onChange={(data) => updateCheckoutData('shipping', data)}
+                    onSubmit={handleShippingSubmit}
+                    loading={loading}
+                  />
+                </CheckoutSection>
+              )}
 
               {availableSteps.includes('ffl') && (
                 <CheckoutSection
@@ -224,20 +229,6 @@ const CheckoutPage: React.FC = () => {
                   <FFLDealerSearch
                     onDealerSelect={handleFFLSelect}
                     className="bg-transparent p-0 shadow-none"
-                  />
-                </CheckoutSection>
-              )}
-
-              {availableSteps.includes('shipping') && (
-                <CheckoutSection
-                  title="Shipping Information"
-                  isActive={currentStep === 'shipping'}
-                >
-                  <ShippingForm
-                    formData={shippingAddress}
-                    onChange={setShippingAddress}
-                    onSubmit={handleShippingSubmit}
-                    loading={loading}
                   />
                 </CheckoutSection>
               )}
