@@ -64,6 +64,15 @@ const HeroSection: React.FC = () => {
           willChange: 'transform' // Optimize for animations
         }}
       />
+
+            {/* Hero Image Cutout Container w/o parallax */}
+      <div 
+        className="absolute inset-x-0 bottom-0 z-10 bg-cover bg-bottom bg-no-repeat"
+        style={{ 
+          backgroundImage: 'url("/img/overlay.png")',
+          filter: 'contrast(1.1) brightness(0.6)',
+        }}
+      />
       
       {/* Overlay gradient for better text readability */}
       <motion.div 
