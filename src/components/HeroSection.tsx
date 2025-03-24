@@ -75,9 +75,10 @@ const HeroSection: React.FC = () => {
         <img 
           src="/img/overlay.png"
           alt="Bottom overlay"
-          className="w-full h-auto object-bottom translate-y-[12%]"
+          className="w-full h-auto object-bottom"
           style={{
             filter: 'contrast(1.1) brightness(0.6)',
+            transform: 'translate(5%, 20%)'
           }}
         />
       </div>
