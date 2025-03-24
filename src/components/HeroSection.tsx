@@ -78,7 +78,7 @@ const HeroSection: React.FC = () => {
           className="w-full h-auto object-bottom"
           style={{
             filter: 'contrast(1.1) brightness(0.6)',
-            transform: 'translate(5%, 11.5%)'
+            transform: 'translate(2.5%, 11.5%)'
           }}
         />
       </div>
