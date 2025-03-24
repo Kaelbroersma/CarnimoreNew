@@ -67,16 +67,20 @@ const HeroSection: React.FC = () => {
 
       {/* Hero Image Cutout Container w/o parallax */}
       <div 
-        className="absolute inset-x-0 bottom-0 z-10 bg-cover bg-bottom bg-no-repeat"
+        className="absolute inset-x-0 bottom-0 z-10"
         style={{ 
-          backgroundImage: 'url("/img/overlay.png")',
-          filter: 'contrast(1.1) brightness(0.6)',
-          height: '30vh',
-          backgroundPosition: '50% 100%', // Center horizontally, align to bottom vertically
-          // If needed for perfect alignment:
-          // transform: 'translateY(10px)' // Adjust based on your specific alignment needs
+          height: 'auto' // This lets the image determine its height
         }}
-      />
+      >
+        <img 
+          src="/img/overlay.png"
+          alt="Bottom overlay"
+          className="w-full h-auto object-bottom"
+          style={{
+            filter: 'contrast(1.1) brightness(0.6)',
+          }}
+        />
+      </div>
       
       {/* Overlay gradient for better text readability */}
       <motion.div 
